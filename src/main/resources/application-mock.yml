@@ -1,0 +1,27 @@
+# ============================================================
+# MOCK profile — runs WITHOUT any Azure AD credentials.
+# Uses a fake/disabled OAuth2 so the app starts and /api/** work.
+# Activate with: SPRING_PROFILES_ACTIVE=mock mvn spring-boot:run
+#
+# In mock mode, call /api/auth/mock-login?email=test@test.com
+# to get a JWT token for testing Angular integration.
+# ============================================================
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          azure:
+            # Dummy values — login page will fail, but app starts
+            client-id:     mock-client-id
+            client-secret: mock-client-secret
+        provider:
+          azure:
+            issuer-uri: https://login.microsoftonline.com/mock-tenant/v2.0
+
+app:
+  jwt-secret: mock-jwt-secret-32-chars-minimum-00
+  frontend-url: http://localhost:4200
+  allowed-origins:
+    - http://localhost:4200

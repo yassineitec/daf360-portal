@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Sign In – DAF360</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: #f0f4f8;
+           display: flex; align-items: center; justify-content: center;
+           min-height: 100vh; }
+    .card { background: white; border-radius: 12px; padding: 3rem 2.5rem;
+            text-align: center; max-width: 400px; width: 90%; }
+    h1 { font-size: 1.8rem; color: #1B3A5C; margin-bottom: 0.5rem; }
+    p { color: #666; margin-bottom: 2rem; }
+    .error { background: #fee; color: #c00; border-radius: 6px;
+             padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 12px;
+      background: #0078D4; color: white; padding: 0.85rem 2rem;
+      border-radius: 6px; text-decoration: none; font-size: 1rem; font-weight: 500;
+    }
+    .btn:hover { background: #005fa3; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Sign in to DAF360</h1>
+    <p>Use your company Microsoft 365 account</p>
+
+    <div class="error" th:if="${param.error}">
+      Authentication failed. Please try again.
+    </div>
+
+    <a class="btn" href="/oauth2/authorization/azure">
+      <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
+        <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
+        <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+      </svg>
+      Continue with Microsoft 365
+    </a>
+  </div>
+</body>
+</html>

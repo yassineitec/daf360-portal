@@ -1,0 +1,87 @@
+# ============================================================
+# DAF360 Portal — application.yml
+#
+# PLACEHOLDER FILE — fill in your Azure AD values when received.
+# All values prefixed with ${...} are environment variables.
+# For local development, create a .env file and set them there,
+# OR create application-local.yml with real values (never commit it).
+# ============================================================
+
+spring:
+
+  application:
+    name: daf360-portal
+
+  security:
+    oauth2:
+      client:
+        registration:
+          azure:
+            # ── Fill these when you receive Azure AD credentials ──────────
+            client-id:     ${AZURE_CLIENT_ID:PLACEHOLDER_CLIENT_ID}
+            client-secret: ${AZURE_CLIENT_SECRET:PLACEHOLDER_CLIENT_SECRET}
+            # ─────────────────────────────────────────────────────────────
+            client-name: Microsoft 365
+            scope:
+              - openid
+              - profile
+              - email
+              - offline_access
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/azure"
+
+        provider:
+          azure:
+            # ── Fill TENANT_ID when received ──────────────────────────────
+            issuer-uri: >
+              https://login.microsoftonline.com/${AZURE_TENANT_ID:PLACEHOLDER_TENANT_ID}/v2.0
+            # Spring auto-discovers the rest (authorization-uri, token-uri,
+            # jwk-set-uri) from the issuer-uri OpenID configuration endpoint.
+
+server:
+  port: ${PORT:8080}
+  servlet:
+    session:
+      cookie:
+        same-site: lax    # required for OAuth2 redirect to work
+        secure: false     # set to true in production (HTTPS)
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.daf360: DEBUG
+    org.springframework.security: DEBUG      # reduce to INFO in production
+    org.springframework.security.oauth2: DEBUG
+
+# ── Custom application properties ───────────────────────────────────────────
+app:
+
+  # JWT secret — must be at least 32 characters (256 bits)
+  # Generate with: openssl rand -base64 32
+  jwt-secret: ${JWT_SECRET:PLACEHOLDER_JWT_SECRET_minimum_32_characters_long}
+
+  # JWT token expiry in seconds (3600 = 1 hour)
+  jwt-expiry-seconds: ${JWT_EXPIRY_SECONDS:3600}
+
+  # Angular frontend URL — used for CORS and post-login redirect
+  frontend-url: ${FRONTEND_URL:http://localhost:4200}
+
+  # CORS: additional allowed origins beyond localhost:4200
+  allowed-origins:
+    - ${RH_FRONTEND_URL:http://localhost:4201}
+    - ${BILLING_FRONTEND_URL:http://localhost:4202}
+    - ${TIMESHEET_FRONTEND_URL:http://localhost:4203}
+
+  # URLs of the other microservices (for SSO redirect in future)
+  apps:
+    rh-url:         ${RH_APP_URL:http://localhost:8081}
+    billing-url:    ${BILLING_APP_URL:http://localhost:8082}
+    timesheet-url:  ${TIMESHEET_APP_URL:http://localhost:8083}

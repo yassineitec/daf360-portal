@@ -1,0 +1,32 @@
+# =============================================================
+# DAF360 Portal – development profile
+# Active when: SPRING_PROFILES_ACTIVE=dev
+# Overrides main application.yml for local development.
+# Uses a local mock OIDC provider (spring-addons or Keycloak)
+# so you can test the login flow before receiving Azure credentials.
+# =============================================================
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          # When testing without Azure, comment out "azure" and
+          # uncomment the "local-mock" block below.
+          azure:
+            client-id: PLACEHOLDER_CLIENT_ID
+            client-secret: PLACEHOLDER_CLIENT_SECRET
+            scope:
+              - openid
+              - profile
+              - email
+            redirect-uri: "http://localhost:8080/login/oauth2/code/azure"
+            authorization-grant-type: authorization_code
+            client-name: "Microsoft 365 (DEV – not configured)"
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.springframework.security: TRACE

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DAF360 Portal</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f0f4f8; display: flex; align-items: center;
+           justify-content: center; min-height: 100vh; }
+    .card { background: white; border-radius: 12px; padding: 3rem 2.5rem;
+            text-align: center; max-width: 420px; width: 90%;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    h1 { font-size: 2rem; color: #1B3A5C; margin-bottom: 0.5rem; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: 1rem; }
+    .btn-ms365 {
+      display: inline-flex; align-items: center; gap: 12px;
+      background: #0078D4; color: white; padding: 0.85rem 2rem;
+      border-radius: 6px; text-decoration: none; font-size: 1rem;
+      font-weight: 500; transition: background .2s;
+    }
+    .btn-ms365:hover { background: #005fa3; }
+    .already-logged { margin-top: 1.5rem; }
+    .already-logged a { color: #0078D4; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>DAF360</h1>
+    <p class="subtitle">Unified Management Portal</p>
+
+    <!-- Show login button if NOT authenticated -->
+    <div sec:authorize="!isAuthenticated()">
+      <a class="btn-ms365" href="/oauth2/authorization/azure">
+        <!-- Microsoft logo SVG -->
+        <svg width="20" height="20" viewBox="0 0 21 21" fill="none"
+             xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
+          <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+          <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
+          <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+        </svg>
+        Sign in with Microsoft 365
+      </a>
+    </div>
+
+    <!-- Show dashboard link if already authenticated -->
+    <div class="already-logged" sec:authorize="isAuthenticated()">
+      <p>Welcome back, <strong sec:authentication="principal.displayName">User</strong>!</p>
+      <br/>
+      <a href="/dashboard">Go to Dashboard →</a>
+    </div>
+  </div>
+</body>
+</html>

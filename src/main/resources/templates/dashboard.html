@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Dashboard – DAF360</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: #f0f4f8; padding: 2rem; }
+    header { background: #1B3A5C; color: white; padding: 1rem 2rem;
+             border-radius: 10px; display: flex; justify-content: space-between;
+             align-items: center; margin-bottom: 2rem; }
+    header h1 { font-size: 1.5rem; }
+    .user-info { font-size: 0.9rem; opacity: 0.85; }
+    .logout { color: white; text-decoration: none; opacity: 0.8;
+              border: 1px solid rgba(255,255,255,.4); padding: .4rem .9rem;
+              border-radius: 4px; font-size: 0.85rem; }
+    .logout:hover { opacity: 1; background: rgba(255,255,255,.1); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem; }
+    .app-card { background: white; border-radius: 10px; padding: 1.75rem;
+                border: 0.5px solid #e0e8f0; }
+    .app-card h2 { font-size: 1.2rem; color: #1B3A5C; margin-bottom: 0.5rem; }
+    .app-card p  { color: #666; font-size: 0.9rem; margin-bottom: 1.25rem; }
+    .btn-app { display: inline-block; background: #2E75B6; color: white;
+               padding: 0.6rem 1.4rem; border-radius: 6px; text-decoration: none;
+               font-size: 0.9rem; }
+    .btn-app:hover { background: #185FA5; }
+    .debug { margin-top: 2rem; background: #f8f9fa; border-radius: 8px;
+             padding: 1.25rem; font-size: 0.8rem; color: #555; }
+    .debug code { font-family: monospace; background: #e9ecef;
+                  padding: 2px 6px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>DAF360 Portal</h1>
+      <div class="user-info">
+        Signed in as <strong th:text="${email}">user@company.com</strong>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:1rem">
+      <span th:text="${userName}" style="font-size:.9rem">User Name</span>
+      <a class="logout" href="/logout">Sign out</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="app-card">
+      <h2>HR Application</h2>
+      <p>Employee management, leave requests, payroll and HR reporting.</p>
+      <a class="btn-app" th:href="${rhUrl}">Open HR App →</a>
+    </div>
+
+    <div class="app-card">
+      <h2>Billing Application</h2>
+      <p>Invoices, project billing, payments and financial reporting.</p>
+      <a class="btn-app" th:href="${billingUrl}">Open Billing App →</a>
+    </div>
+
+    <div class="app-card">
+      <h2>Timesheet</h2>
+      <p>Time tracking, project hours and attendance management.</p>
+      <a class="btn-app" th:href="${timesheetUrl}">Open Timesheet →</a>
+    </div>
+
+  </div>
+
+  <!-- Debug info – remove in production -->
+  <div class="debug">
+    <strong>Debug info (remove in production)</strong><br/>
+    Azure OID: <code th:text="${azureOid}">oid</code><br/>
+    Email: <code th:text="${email}">email</code>
+  </div>
+
+</body>
+</html>

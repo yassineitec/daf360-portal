@@ -1,0 +1,23 @@
+# ============================================================
+# Local development credentials — DO NOT COMMIT THIS FILE
+# Add "application-local.yml" to your .gitignore
+# Run with: SPRING_PROFILES_ACTIVE=local mvn spring-boot:run
+# ============================================================
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          azure:
+            client-id:     YOUR_REAL_CLIENT_ID_HERE
+            client-secret: YOUR_REAL_CLIENT_SECRET_HERE
+        provider:
+          azure:
+            issuer-uri: https://login.microsoftonline.com/YOUR_REAL_TENANT_ID_HERE/v2.0
+
+app:
+  jwt-secret: your-real-jwt-secret-minimum-32-characters-long-replace-this
+  frontend-url: http://localhost:4200
+  allowed-origins:
+    - http://localhost:4200
