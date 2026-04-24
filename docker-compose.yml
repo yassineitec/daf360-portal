@@ -1,0 +1,130 @@
+version: '3.9'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DAF360 — Full-stack Docker Compose
+# Run from the portal directory: docker-compose up --build
+#
+# Services:
+#   - sqlserver     (port 1433) — single SQL Server instance, two databases
+#   - rabbitmq      (port 5672 + 15672 management UI)
+#   - portal        (port 8080) — auth/SSO hub
+#   - rh-service    (port 8081) — HR module
+#   - facturation   (port 8082) — Billing module
+#
+# Prerequisite: copy .env.example to .env and fill values
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── SQL Server ─────────────────────────────────────────────────────────────
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: daf360-sqlserver
+    environment:
+      SA_PASSWORD: ${SQL_SA_PASSWORD}
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - daf360-network
+    healthcheck:
+      test: >
+        /opt/mssql-tools18/bin/sqlcmd
+        -S localhost -U sa -P "$$SA_PASSWORD"
+        -C -Q "SELECT 1" || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+
+  # ── RabbitMQ ───────────────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: daf360-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-daf360}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-daf360}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - daf360-network
+
+  # ── Portal (auth / SSO hub) ────────────────────────────────────────────────
+  portal:
+    build: .
+    container_name: daf360-portal
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      RABBITMQ_HOST: rabbitmq
+      RH_APP_URL: http://rh-service:8081
+      BILLING_APP_URL: http://facturation-service:8082
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    networks:
+      - daf360-network
+
+  # ── HR Service ────────────────────────────────────────────────────────────
+  rh-service:
+    build: ../../daf360-rh-service/rh-service
+    container_name: daf360-rh-service
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=daf360_hr;encrypt=true;trustServerCertificate=true"
+      DB_USER: sa
+      DB_PASS: ${SQL_SA_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      PORTAL_URL: http://portal:8080
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - daf360-network
+
+  # ── Facturation Service ───────────────────────────────────────────────────
+  facturation-service:
+    build: ../../daf360-facturation-service/facturation-service
+    container_name: daf360-facturation
+    ports:
+      - "8082:8082"
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=daf360_billing;encrypt=true;trustServerCertificate=true"
+      DB_USER: sa
+      DB_PASS: ${SQL_SA_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RH_SERVICE_URL: http://rh-service:8081
+      PORTAL_URL: http://portal:8080
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - daf360-network
+
+volumes:
+  sqlserver-data:
+  rabbitmq-data:
+
+networks:
+  daf360-network:
+    driver: bridge
