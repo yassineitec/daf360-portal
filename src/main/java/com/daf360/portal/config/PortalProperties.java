@@ -1,6 +1,7 @@
 package com.daf360.portal.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 import lombok.Data;
 
 /**
@@ -8,6 +9,7 @@ import lombok.Data;
  * All values are injected via environment variables with fallback defaults.
  */
 @Data
+@Component
 @ConfigurationProperties(prefix = "app.portal")
 public class PortalProperties {
 

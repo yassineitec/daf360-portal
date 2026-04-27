@@ -34,3 +34,7 @@ build/
 
 # Environment variables — never commit
 .env
+
+# Local development credentials — never commit
+application-local.yml
+src/main/resources/application-local.yml

@@ -10,14 +10,16 @@ spring:
       client:
         registration:
           azure:
-            client-id:     YOUR_REAL_CLIENT_ID_HERE
-            client-secret: YOUR_REAL_CLIENT_SECRET_HERE
+            client-id:     0e4280e9-aba1-4ab7-a67f-60319e54c3bb
+            client-secret: "l.X8Q~XJoPKpCF1xfFr-Dmn00D0jPf6JuF8wIcV~"
         provider:
           azure:
-            issuer-uri: https://login.microsoftonline.com/YOUR_REAL_TENANT_ID_HERE/v2.0
+            issuer-uri: https://login.microsoftonline.com/d4a96e86-7cb0-4ad5-8ad8-2f613af98ce8/v2.0
 
 app:
-  jwt-secret: your-real-jwt-secret-minimum-32-characters-long-replace-this
+  jwt-secret: "daf360-local-dev-jwt-secret-key-min-32-chars"
   frontend-url: http://localhost:4200
   allowed-origins:
     - http://localhost:4200
+    - http://localhost:4201
+    - http://localhost:4202

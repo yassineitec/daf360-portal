@@ -1,6 +1,7 @@
 package com.daf360.portal.config;
 
 import com.daf360.portal.security.AzureOAuth2SuccessHandler;
+import com.daf360.portal.security.AzureOAuth2UserService;
 import com.daf360.portal.security.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -34,6 +35,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final AzureOAuth2SuccessHandler successHandler;
+    private final AzureOAuth2UserService    azureOAuth2UserService;
     private final JwtAuthFilter             jwtAuthFilter;
     private final AppProperties             appProperties;
 
@@ -62,6 +64,7 @@ public class SecurityConfig {
             // ── OAuth2 login for browser-based flow ───────────────────────
             .oauth2Login(oauth2 -> oauth2
                 .loginPage("/oauth2/authorization/azure")
+                .userInfoEndpoint(u -> u.oidcUserService(azureOAuth2UserService))
                 .successHandler(successHandler)
                 .failureUrl("/login-error")
             )

@@ -3,12 +3,12 @@ package com.daf360.portal.security;
 import com.daf360.portal.dto.PortalUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
+import jakarta.servlet.ServletException;
 import java.io.IOException;
 
 /**
@@ -24,7 +24,6 @@ import java.io.IOException;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class LoginSuccessHandler
         extends SavedRequestAwareAuthenticationSuccessHandler {
 
@@ -38,7 +37,7 @@ public class LoginSuccessHandler
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication)
-            throws IOException {
+            throws IOException, ServletException {
 
         if (authentication.getPrincipal() instanceof PortalUser user) {
             log.info("LOGIN SUCCESS | user={} | oid={} | ip={}",
