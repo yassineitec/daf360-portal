@@ -4,17 +4,6 @@
 # Run with: SPRING_PROFILES_ACTIVE=local mvn spring-boot:run
 # ============================================================
 
-spring:
-  security:
-    oauth2:
-      client:
-        registration:
-          azure:
-            client-id:     0e4280e9-aba1-4ab7-a67f-60319e54c3bb
-            client-secret: "l.X8Q~XJoPKpCF1xfFr-Dmn00D0jPf6JuF8wIcV~"
-        provider:
-          azure:
-            issuer-uri: https://login.microsoftonline.com/d4a96e86-7cb0-4ad5-8ad8-2f613af98ce8/v2.0
 
 app:
   jwt-secret: "daf360-local-dev-jwt-secret-key-min-32-chars"
