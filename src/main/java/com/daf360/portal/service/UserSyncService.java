@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.StandardClaimNames;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -27,6 +28,7 @@ public class UserSyncService {
     private final RoleRepository roleRepository;
     private final AppProperties props;
 
+    @CacheEvict(value = "userInfo", key = "#result.id")
     @Transactional
     public User syncUser(OidcIdToken idToken, String ms365AccessToken, String ms365RefreshToken) {
         String azureOid = extractClaim(idToken, "oid");
