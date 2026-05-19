@@ -2,6 +2,7 @@ package com.daf360.portal.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,6 +20,7 @@ public class RsaKeyConfig {
     private final AppProperties props;
 
     @Bean
+    @ConditionalOnMissingBean(PrivateKey.class)
     public PrivateKey jwtPrivateKey() throws Exception {
         String pem = Files.readString(Paths.get(props.getJwt().getPrivateKeyPath()));
         String encoded = pem
@@ -33,6 +35,7 @@ public class RsaKeyConfig {
     }
 
     @Bean
+    @ConditionalOnMissingBean(PublicKey.class)
     public PublicKey jwtPublicKey() throws Exception {
         String pem = Files.readString(Paths.get(props.getJwt().getPublicKeyPath()));
         String encoded = pem

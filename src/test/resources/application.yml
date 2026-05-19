@@ -1,0 +1,53 @@
+# Test configuration — overrides application.yml for Spring context tests
+spring:
+  main:
+    allow-bean-definition-overriding: true  # needed for TestRsaKeyConfig to override RsaKeyConfig
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MSSQLServer
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  security:
+    oauth2:
+      client:
+        registration:
+          azure:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            scope: [openid, profile, email, offline_access]
+            redirect-uri: "http://localhost/login/oauth2/code/azure"
+            authorization-grant-type: authorization_code
+        provider:
+          azure:
+            authorization-uri: "https://login.microsoftonline.com/test-tenant/oauth2/v2.0/authorize"
+            token-uri: "https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token"
+            jwk-set-uri: "https://login.microsoftonline.com/test-tenant/discovery/v2.0/keys"
+            user-info-uri: "https://graph.microsoft.com/oidc/userinfo"
+            user-name-attribute: sub
+
+# Dummy values — overridden by TestRsaKeyConfig @TestConfiguration bean
+app:
+  jwt:
+    private-key-path: /dev/null
+    public-key-path: /dev/null
+    access-token-expiry-seconds: 3600
+    refresh-token-expiry-seconds: 604800
+    issuer: daf360-portal
+  cors:
+    portal-origin: http://localhost:4200
+    hr-origin: http://localhost:4201
+    facturation-origin: http://localhost:4202
+    timesheet-origin: http://localhost:4203
+  cookie:
+    secure: false
+    same-site: Strict
+    domain: ""
+  default-pays-id: 1
