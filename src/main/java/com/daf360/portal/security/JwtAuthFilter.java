@@ -1,9 +1,10 @@
 package com.daf360.portal.security;
 
-import com.daf360.portal.service.JwtService;
+import com.daf360.portal.service.JwtTokenService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -12,87 +13,72 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
-/**
- * Reads the internal JWT from the Authorization: Bearer <token> header
- * on every request to /api/** endpoints.
- *
- * When Angular sends the JWT (obtained after OAuth2 login), this filter:
- *  1. Extracts and validates the token
- *  2. Loads the user's roles from the token claims
- *  3. Sets the SecurityContext so @PreAuthorize annotations work
- *
- * Note: This filter handles the PORTAL's own JWT tokens (signed by JwtService).
- * It is separate from Azure AD validation — the portal signs its own tokens
- * that it issues to Angular.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
+    private final JwtTokenService jwtTokenService;
 
     @Override
-    protected void doFilterInternal(
-            @NonNull HttpServletRequest  request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain         filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain chain)
+            throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
+        extractToken(request).ifPresent(token -> {
+            try {
+                Claims claims = jwtTokenService.parseToken(token);
+                List<SimpleGrantedAuthority> authorities = extractAuthorities(claims);
 
-        // Skip if no token present
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String token = authHeader.substring(7);
-
-        try {
-            if (jwtService.isTokenValid(token)) {
-                Claims claims = jwtService.parseToken(token);
-
-                // Build Spring authorities from the roles claim
-                @SuppressWarnings("unchecked")
-                List<String> roles = (List<String>) claims.get("roles", List.class);
-                List<SimpleGrantedAuthority> authorities = roles == null
-                    ? List.of()
-                    : roles.stream()
-                        .map(r -> new SimpleGrantedAuthority("ROLE_" + r.toUpperCase()))
-                        .collect(Collectors.toList());
-
-                // Set authentication in the security context
-                UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(
-                        claims.getSubject(),   // principal = OID
-                        null,
-                        authorities
-                    );
-                authToken.setDetails(
-                    new WebAuthenticationDetailsSource().buildDetails(request));
-
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-                log.debug("JWT authenticated: OID={}", claims.getSubject());
+                UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(claims.getSubject(), null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            } catch (Exception e) {
+                log.debug("JWT rejected for {}: {}", request.getRequestURI(), e.getMessage());
+                SecurityContextHolder.clearContext();
             }
-        } catch (Exception e) {
-            log.debug("JWT validation failed: {}", e.getMessage());
-            // Do not set authentication — request continues unauthenticated
-        }
+        });
 
-        filterChain.doFilter(request, response);
+        chain.doFilter(request, response);
     }
 
-    /** Only apply this filter to /api/** paths */
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith("/api/");
+    private Optional<String> extractToken(HttpServletRequest request) {
+        // 1. HttpOnly cookie (primary path for browser clients)
+        if (request.getCookies() != null) {
+            Optional<String> cookie = Arrays.stream(request.getCookies())
+                .filter(c -> "daf360_access".equals(c.getName()))
+                .map(Cookie::getValue)
+                .filter(v -> v != null && !v.isBlank())
+                .findFirst();
+            if (cookie.isPresent()) return cookie;
+        }
+
+        // 2. Authorization: Bearer <token> (service-to-service calls)
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return Optional.of(header.substring(7));
+        }
+
+        return Optional.empty();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<SimpleGrantedAuthority> extractAuthorities(Claims claims) {
+        Object perms = claims.get("permissions");
+        if (perms instanceof List<?> list) {
+            return list.stream()
+                .map(p -> new SimpleGrantedAuthority("PERM_" + p))
+                .toList();
+        }
+        return List.of();
     }
 }
