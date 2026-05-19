@@ -1,7 +1,6 @@
 package com.daf360.portal.config;
 
 import com.daf360.portal.security.AzureOAuth2SuccessHandler;
-import com.daf360.portal.security.AzureOAuth2UserService;
 import com.daf360.portal.security.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -14,65 +13,71 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Central Spring Security configuration for the DAF360 Portal.
- *
- * Two authentication mechanisms co-exist:
- *  A) oauth2Login — for the browser-based Microsoft 365 redirect flow
- *  B) JwtAuthFilter — for stateless Angular API calls (Bearer token)
- */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final AppProperties props;
     private final AzureOAuth2SuccessHandler successHandler;
-    private final AzureOAuth2UserService    azureOAuth2UserService;
-    private final JwtAuthFilter             jwtAuthFilter;
-    private final AppProperties             appProperties;
+    private final JwtAuthFilter jwtAuthFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
             .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/api/**", "/oauth2/**", "/login/**"))
+                .ignoringRequestMatchers("/api/**", "/auth/**", "/oauth2/**", "/login/**")
+            )
+
+            .headers(headers -> headers
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31536000)
+                )
+                .frameOptions(frame -> frame.deny())
+                .contentTypeOptions(ct -> {})
+                .referrerPolicy(ref -> ref.policy(
+                    ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN
+                ))
+                .contentSecurityPolicy(csp -> csp.policyDirectives(
+                    "default-src 'self'; " +
+                    "script-src 'self'; " +
+                    "style-src 'self' 'unsafe-inline'; " +
+                    "img-src 'self' data:; " +
+                    "connect-src 'self' https://login.microsoftonline.com; " +
+                    "frame-ancestors 'none';"
+                ))
+            )
+
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+            )
 
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/",
-                    "/public/**",
-                    "/actuator/health",
-                    "/oauth2/**",
-                    "/login/**",
-                    "/login-error",
-                    "/api/auth/login",
-                    "/api/auth/status",
-                    "/error"
+                    "/", "/login", "/error", "/error/**",
+                    "/public/**", "/actuator/health",
+                    "/oauth2/**", "/login/oauth2/**",
+                    "/auth/login", "/auth/callback", "/auth/status"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
 
-            // ── OAuth2 login for browser-based flow ───────────────────────
             .oauth2Login(oauth2 -> oauth2
-                .loginPage("/oauth2/authorization/azure")
-                .userInfoEndpoint(u -> u.oidcUserService(azureOAuth2UserService))
                 .successHandler(successHandler)
-                .failureUrl("/login-error")
+                .failureUrl("/login?error=oauth2")
             )
 
-            // ── JWT filter for stateless Angular API calls ────────────────
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-
-            // ── 401 (not 302) for unauthenticated /api calls ──────────────
             .exceptionHandling(ex -> ex
                 .defaultAuthenticationEntryPointFor(
                     new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
@@ -80,38 +85,27 @@ public class SecurityConfig {
                 )
             )
 
-            // ── Session: stateless for API, minimal for OAuth2 flow ───────
-            .sessionManagement(s -> s
-                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-            )
-
-            .logout(logout -> logout
-                .logoutUrl("/api/auth/logout")
-                .logoutSuccessHandler((req, res, auth) ->
-                    res.setStatus(HttpStatus.OK.value()))
-                .deleteCookies("JSESSIONID")
-                .invalidateHttpSession(true)
-            );
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration cfg = new CorsConfiguration();
-
-        List<String> origins = new ArrayList<>();
-        origins.add("http://localhost:4200");
-        origins.addAll(appProperties.getAllowedOrigins());
-
-        cfg.setAllowedOrigins(origins);
-        cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS","PATCH"));
-        cfg.setAllowedHeaders(List.of("*"));
-        cfg.setAllowCredentials(true);
-        cfg.setMaxAge(3600L);
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of(
+            props.getCors().getPortalOrigin(),
+            props.getCors().getHrOrigin(),
+            props.getCors().getFactuOrigin(),
+            props.getCors().getTimesheetOrigin()
+        ));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cfg);
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 }
