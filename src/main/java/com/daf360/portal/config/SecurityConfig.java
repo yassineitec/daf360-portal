@@ -2,7 +2,6 @@ package com.daf360.portal.config;
 
 import com.daf360.portal.security.AzureOAuth2SuccessHandler;
 import com.daf360.portal.security.JwtAuthFilter;
-import com.daf360.portal.security.PermissionEvaluatorImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Bean;
