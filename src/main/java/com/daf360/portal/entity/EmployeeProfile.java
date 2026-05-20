@@ -18,6 +18,9 @@ public class EmployeeProfile {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
+    @Column(name = "hire_date")
+    private LocalDate hireDate;
+
     @Column(name = "photo_url", length = 500)
     private String photoUrl;
 

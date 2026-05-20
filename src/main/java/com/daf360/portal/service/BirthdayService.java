@@ -24,35 +24,41 @@ public class BirthdayService {
         List<EventResponse> result = new ArrayList<>();
 
         for (EmployeeProfile ep : profiles) {
-            if (ep.getDateOfBirth() == null) continue;
             if (paysId != null && !paysId.equals(ep.getPaysId())) continue;
-
-            MonthDay birthday = MonthDay.from(ep.getDateOfBirth());
             String maskedName = getMaskedName(ep.getUserId());
 
-            for (int year = from.getYear(); year <= to.getYear(); year++) {
-                LocalDate occurrence;
-                try {
-                    occurrence = birthday.atYear(year);
-                } catch (Exception e) {
-                    continue; // Feb 29 in non-leap year
-                }
-                if (!occurrence.isBefore(from) && !occurrence.isAfter(to)) {
-                    result.add(EventResponse.builder()
-                        .id(ep.getId())
-                        .title(maskedName)
-                        .eventDate(occurrence)
-                        .eventType("BIRTHDAY")
-                        .description(null)
-                        .paysId(ep.getPaysId())
-                        .editable(false)
-                        .build());
-                }
-            }
+            addAnnualEvents(ep.getDateOfBirth(), "BIRTHDAY", maskedName, ep, from, to, result);
+            addAnnualEvents(ep.getHireDate(), "WORK_ANNIVERSARY", maskedName, ep, from, to, result);
         }
 
         result.sort((a, b) -> a.getEventDate().compareTo(b.getEventDate()));
         return result;
+    }
+
+    private void addAnnualEvents(LocalDate anchor, String eventType, String name,
+                                  EmployeeProfile ep, LocalDate from, LocalDate to,
+                                  List<EventResponse> result) {
+        if (anchor == null) return;
+        MonthDay monthDay = MonthDay.from(anchor);
+        for (int year = from.getYear(); year <= to.getYear(); year++) {
+            LocalDate occurrence;
+            try {
+                occurrence = monthDay.atYear(year);
+            } catch (Exception e) {
+                continue; // Feb 29 in non-leap year
+            }
+            if (!occurrence.isBefore(from) && !occurrence.isAfter(to)) {
+                result.add(EventResponse.builder()
+                    .id(ep.getId())
+                    .title(name)
+                    .eventDate(occurrence)
+                    .eventType(eventType)
+                    .description(null)
+                    .paysId(ep.getPaysId())
+                    .editable(false)
+                    .build());
+            }
+        }
     }
 
     private String getMaskedName(Long userId) {
