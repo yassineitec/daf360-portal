@@ -28,6 +28,7 @@ public class UserSyncService {
     private final RoleRepository roleRepository;
     private final AppProperties props;
 
+    // Evict stale cached profile when user re-authenticates; new users have no entry so eviction is harmless
     @CacheEvict(value = "userInfo", key = "#result.id")
     @Transactional
     public User syncUser(OidcIdToken idToken, String ms365AccessToken, String ms365RefreshToken) {

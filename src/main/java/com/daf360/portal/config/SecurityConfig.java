@@ -88,6 +88,14 @@ public class SecurityConfig {
                     new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
                     req -> req.getRequestURI().startsWith("/api/")
                 )
+                .defaultAccessDeniedHandlerFor(
+                    (req, res, e) -> {
+                        res.setStatus(HttpStatus.FORBIDDEN.value());
+                        res.setContentType("application/json;charset=UTF-8");
+                        res.getWriter().write("{\"error\":\"FORBIDDEN\"}");
+                    },
+                    req -> req.getRequestURI().startsWith("/api/")
+                )
             )
 
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
