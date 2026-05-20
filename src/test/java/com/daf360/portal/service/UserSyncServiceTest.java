@@ -1,10 +1,9 @@
 package com.daf360.portal.service;
 
-import com.daf360.portal.config.AppProperties;
 import com.daf360.portal.entity.Role;
 import com.daf360.portal.entity.User;
-import com.daf360.portal.repository.RoleRepository;
 import com.daf360.portal.repository.UserRepository;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,15 +25,12 @@ import static org.mockito.Mockito.*;
 class UserSyncServiceTest {
 
     @Mock UserRepository userRepository;
-    @Mock RoleRepository roleRepository;
 
     private UserSyncService userSyncService;
 
     @BeforeEach
     void setUp() {
-        AppProperties props = new AppProperties();
-        props.setDefaultPaysId(1L);
-        userSyncService = new UserSyncService(userRepository, roleRepository, props);
+        userSyncService = new UserSyncService(userRepository);
     }
 
     private OidcIdToken buildToken(String oid, String email, String name, String upn) {
@@ -73,34 +69,16 @@ class UserSyncServiceTest {
     }
 
     @Test
-    void syncUser_newUser_createsWithCollaborateurRole() {
+    void syncUser_unprovisioned_throwsUsernameNotFoundException() {
         OidcIdToken token = buildToken("oid-new", "new@corp.com", "Bob Dupont", "bob@corp.com");
-
-        Role collaborateur = new Role();
-        collaborateur.setId(3L);
-        collaborateur.setFrenchName("Collaborateur");
-        collaborateur.setPermissions(List.of("PORTAL_READ"));
 
         when(userRepository.findByAzureOid("oid-new")).thenReturn(Optional.empty());
         when(userRepository.findByEmail("new@corp.com")).thenReturn(Optional.empty());
-        when(roleRepository.findByFrenchName("Collaborateur")).thenReturn(Optional.of(collaborateur));
-        when(userRepository.save(any())).thenAnswer(inv -> {
-            User u = inv.getArgument(0);
-            u.setId(10L);
-            return u;
-        });
 
-        User result = userSyncService.syncUser(token, "ms-access", "ms-refresh");
-
-        assertThat(result.getId()).isEqualTo(10L);
-        assertThat(result.getAzureOid()).isEqualTo("oid-new");
-        assertThat(result.getEmail()).isEqualTo("new@corp.com");
-        assertThat(result.getFullName()).isEqualTo("Bob Dupont");
-        assertThat(result.getUsername()).isEqualTo("bob@corp.com");
-        assertThat(result.getPaysId()).isEqualTo(1L);
-        assertThat(result.getIsActive()).isTrue();
-        assertThat(result.getRole().getFrenchName()).isEqualTo("Collaborateur");
-        assertThat(result.getPassword()).isNull();
+        org.junit.jupiter.api.Assertions.assertThrows(
+            UsernameNotFoundException.class,
+            () -> userSyncService.syncUser(token, "ms-access", "ms-refresh")
+        );
     }
 
     @Test

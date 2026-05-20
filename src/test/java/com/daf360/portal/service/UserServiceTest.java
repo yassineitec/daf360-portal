@@ -4,6 +4,7 @@ import com.daf360.portal.dto.MeResponse;
 import com.daf360.portal.entity.Pays;
 import com.daf360.portal.entity.Role;
 import com.daf360.portal.entity.User;
+import com.daf360.portal.repository.EmployeeProfileRepository;
 import com.daf360.portal.repository.PaysRepository;
 import com.daf360.portal.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,12 +27,13 @@ class UserServiceTest {
 
     @Mock UserRepository userRepository;
     @Mock PaysRepository paysRepository;
+    @Mock EmployeeProfileRepository employeeProfileRepository;
 
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, paysRepository);
+        userService = new UserService(userRepository, paysRepository, employeeProfileRepository);
     }
 
     private User buildUser(Long id, Role role) {
@@ -64,6 +66,7 @@ class UserServiceTest {
 
         when(userRepository.findById(7L)).thenReturn(Optional.of(buildUser(7L, role)));
         when(paysRepository.findById(1L)).thenReturn(Optional.of(pays));
+        when(employeeProfileRepository.findByUserId(7L)).thenReturn(Optional.empty());
 
         MeResponse response = userService.getUserInfo(7L);
 
@@ -88,6 +91,7 @@ class UserServiceTest {
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(buildUser(1L, role)));
         when(paysRepository.findById(1L)).thenReturn(Optional.empty());
+        when(employeeProfileRepository.findByUserId(1L)).thenReturn(Optional.empty());
 
         MeResponse response = userService.getUserInfo(1L);
 
@@ -117,6 +121,7 @@ class UserServiceTest {
 
         when(userRepository.findById(3L)).thenReturn(Optional.of(user));
         when(paysRepository.findById(1L)).thenReturn(Optional.empty());
+        when(employeeProfileRepository.findByUserId(3L)).thenReturn(Optional.empty());
 
         MeResponse response = userService.getUserInfo(3L);
 
