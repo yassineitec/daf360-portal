@@ -19,4 +19,5 @@ public class MeResponse {
     private Long paysId;
     private String isoCode;
     private String employeeId;
+    private String photoUrl;
 }

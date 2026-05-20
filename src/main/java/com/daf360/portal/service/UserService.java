@@ -4,6 +4,7 @@ import com.daf360.portal.dto.MeResponse;
 import com.daf360.portal.entity.Pays;
 import com.daf360.portal.entity.Role;
 import com.daf360.portal.entity.User;
+import com.daf360.portal.repository.EmployeeProfileRepository;
 import com.daf360.portal.repository.PaysRepository;
 import com.daf360.portal.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -22,6 +23,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PaysRepository paysRepository;
+    private final EmployeeProfileRepository employeeProfileRepository;
 
     @Cacheable(value = "userInfo", key = "#userId")
     @Transactional(readOnly = true)
@@ -36,6 +38,10 @@ public class UserService {
         Role role = user.getRole();
         List<String> permissions = role != null ? role.getPermissions() : List.of();
 
+        String photoUrl = employeeProfileRepository.findByUserId(userId)
+            .map(ep -> ep.getPhotoUrl())
+            .orElse(null);
+
         return MeResponse.builder()
             .userId(user.getId())
             .fullName(user.getFullName())
@@ -47,6 +53,7 @@ public class UserService {
             .paysId(user.getPaysId())
             .isoCode(isoCode)
             .employeeId(user.getEmployeeId())
+            .photoUrl(photoUrl)
             .build();
         // Sensitive fields intentionally omitted:
         // password, refreshToken, azureOid, ms365AccessToken, ms365RefreshToken
