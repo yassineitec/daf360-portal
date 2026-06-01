@@ -38,3 +38,6 @@ build/
 # Local development credentials — never commit
 application-local.yml
 src/main/resources/application-local.yml
+
+# RSA key files — never commit
+keys/

@@ -38,7 +38,7 @@ public class User {
     @Column(name = "ms365_access_token", columnDefinition = "nvarchar(max)")
     private String ms365AccessToken;
 
-    @Column(name = "ms365_refresh_token", length = 500)
+    @Column(name = "ms365_refresh_token", columnDefinition = "nvarchar(max)")
     private String ms365RefreshToken;
 
     // Portal UUID refresh token — separate from MS365 refresh token

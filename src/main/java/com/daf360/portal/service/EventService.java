@@ -5,6 +5,7 @@ import com.daf360.portal.dto.EventResponse;
 import com.daf360.portal.dto.EventUpdateDto;
 import com.daf360.portal.entity.PortalEvent;
 import com.daf360.portal.repository.PortalEventRepository;
+import com.daf360.portal.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,23 +21,32 @@ import java.util.List;
 public class EventService {
 
     private final PortalEventRepository portalEventRepository;
-    private final BirthdayService birthdayService;
+    private final BirthdayService       birthdayService;
+    private final LeaveEventService     leaveEventService;
+    private final UserRepository        userRepository;
 
     @Transactional(readOnly = true)
-    public List<EventResponse> getEventsForRange(Long paysId, LocalDate from, LocalDate to) {
+    public List<EventResponse> getEventsForRange(Long paysId, LocalDate from, LocalDate to, Long userId) {
         List<EventResponse> events = new ArrayList<>();
         portalEventRepository.findActiveEventsInRange(from, to, paysId)
             .forEach(e -> events.add(toResponse(e)));
         events.addAll(birthdayService.getBirthdaysForRange(paysId, from, to));
+
+        if (userId != null) {
+            userRepository.findById(userId).ifPresent(user ->
+                events.addAll(leaveEventService.getLeaveEvents(user.getEmail(), from, to))
+            );
+        }
+
         events.sort(Comparator.comparing(EventResponse::getEventDate));
         return events;
     }
 
     @Transactional(readOnly = true)
-    public List<EventResponse> getUpcomingEvents(Long paysId, int days) {
+    public List<EventResponse> getUpcomingEvents(Long paysId, int days, Long userId) {
         LocalDate from = LocalDate.now();
-        LocalDate to = from.plusDays(days);
-        return getEventsForRange(paysId, from, to);
+        LocalDate to   = from.plusDays(days);
+        return getEventsForRange(paysId, from, to, userId);
     }
 
     @Transactional

@@ -25,15 +25,19 @@ public class EventController {
     public ResponseEntity<List<EventResponse>> getEventsForRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(required = false) Long paysId) {
-        return ResponseEntity.ok(eventService.getEventsForRange(paysId, from, to));
+            @RequestParam(required = false) Long paysId,
+            Authentication authentication) {
+        Long userId = authentication != null ? Long.valueOf((String) authentication.getPrincipal()) : null;
+        return ResponseEntity.ok(eventService.getEventsForRange(paysId, from, to, userId));
     }
 
     @GetMapping("/upcoming")
     public ResponseEntity<List<EventResponse>> getUpcoming(
             @RequestParam(defaultValue = "30") int days,
-            @RequestParam(required = false) Long paysId) {
-        return ResponseEntity.ok(eventService.getUpcomingEvents(paysId, days));
+            @RequestParam(required = false) Long paysId,
+            Authentication authentication) {
+        Long userId = authentication != null ? Long.valueOf((String) authentication.getPrincipal()) : null;
+        return ResponseEntity.ok(eventService.getUpcomingEvents(paysId, days, userId));
     }
 
     @PostMapping

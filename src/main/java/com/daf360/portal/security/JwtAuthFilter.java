@@ -28,6 +28,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenService jwtTokenService;
 
+    /**
+     * Skip JWT processing for OAuth2 paths.
+     *
+     * The OAuth2 authorization flow (/oauth2/authorization/**) and callback
+     * (/login/oauth2/code/**) rely on session-based CSRF state management.
+     * If the JWT filter sets the SecurityContext on those paths it interferes
+     * with Spring Security's state validation, causing login?error=oauth2.
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return uri.startsWith("/oauth2/")
+            || uri.startsWith("/login/oauth2/")
+            || uri.startsWith("/auth/callback");
+    }
+
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
@@ -76,7 +92,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         Object perms = claims.get("permissions");
         if (perms instanceof List<?> list) {
             return list.stream()
-                .map(p -> new SimpleGrantedAuthority("PERM_" + p))
+                .map(p -> new SimpleGrantedAuthority(p.toString()))
                 .toList();
         }
         return List.of();

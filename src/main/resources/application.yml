@@ -11,6 +11,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     show-sql: false
     properties:
       hibernate:
@@ -57,3 +59,7 @@ app:
     same-site: Strict
     domain: ${COOKIE_DOMAIN:}
   default-pays-id: ${DEFAULT_PAYS_ID:1}
+  rh-db:
+    url: ${RH_DB_URL:jdbc:sqlserver://localhost:1433;databaseName=DAF360-HR;encrypt=false;trustServerCertificate=true}
+    username: ${RH_DB_USERNAME:sa}
+    password: ${RH_DB_PASSWORD:}

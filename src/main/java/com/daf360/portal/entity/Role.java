@@ -1,10 +1,14 @@
 package com.daf360.portal.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Getter @Setter
 @Entity
@@ -27,11 +31,16 @@ public class Role {
     @Column(name = "deleted")
     private Boolean deleted;
 
-    @Column(name = "parent_role_id")
-    private Long parentRoleId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_role_id")
+    @JsonIgnore
+    private Role parentRole;
 
-    // RolePermissions table has columns: role_id (FK) + permission (varchar string)
-    // This is NOT a join to a Permission entity — it is a simple string collection
+    // Children in the hierarchy — used to collect inherited permissions recursively
+    @OneToMany(mappedBy = "parentRole", fetch = FetchType.EAGER)
+    @JsonIgnore
+    private Set<Role> subordinateRoles = new HashSet<>();
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
         name = "RolePermissions",

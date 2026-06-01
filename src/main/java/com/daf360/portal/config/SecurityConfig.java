@@ -122,7 +122,7 @@ public class SecurityConfig {
             props.getCors().getTimesheetOrigin()
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "X-Retry"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 

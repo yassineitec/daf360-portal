@@ -10,8 +10,10 @@ public class EventResponse {
     private Long id;
     private String title;
     private LocalDate eventDate;
-    private String eventType; // "BIRTHDAY", "COMPANY_EVENT", "ANNOUNCEMENT", "OTHER"
+    private String eventType;
     private String description;
     private Long paysId;
-    private boolean editable; // true only for COMPANY_EVENT/ANNOUNCEMENT/OTHER (not birthdays)
+    private boolean editable;
+    /** Non-null only for leave events: "APPROVED" or "PENDING" */
+    private String status;
 }

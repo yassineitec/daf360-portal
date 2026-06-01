@@ -17,6 +17,6 @@ public class Pays {
     @Column(name = "iso_code", length = 10)
     private String isoCode;
 
-    @Column(name = "nom_fr", length = 100)
-    private String nomFr;
+    @Column(name = "french_label", length = 255)
+    private String frenchLabel;
 }

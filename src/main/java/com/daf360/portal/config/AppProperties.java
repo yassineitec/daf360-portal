@@ -14,6 +14,7 @@ public class AppProperties {
     private Cookie cookie = new Cookie();
     private Apps apps = new Apps();
     private long defaultPaysId = 1L;
+    private RhDb rhDb = new RhDb();
 
     /** Frontend (portal) URL — used for post-login redirects. */
     private String frontendUrl = "http://localhost:4200";
@@ -67,5 +68,12 @@ public class AppProperties {
         private String rhUrl          = "http://localhost:4201";
         private String billingUrl     = "http://localhost:4202";
         private String timesheetUrl   = "http://localhost:4203";
+    }
+
+    @Data
+    public static class RhDb {
+        private String url      = "jdbc:sqlserver://localhost:1433;databaseName=DAF360-HR;encrypt=false;trustServerCertificate=true";
+        private String username = "sa";
+        private String password = "";
     }
 }

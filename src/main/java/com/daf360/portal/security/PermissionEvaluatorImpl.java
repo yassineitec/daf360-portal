@@ -12,7 +12,7 @@ public class PermissionEvaluatorImpl implements PermissionEvaluator {
     @Override
     public boolean hasPermission(Authentication authentication, Object targetDomainObject, Object permission) {
         if (authentication == null || permission == null) return false;
-        String required = "PERM_" + permission.toString();
+        String required = permission.toString();
         return authentication.getAuthorities().stream()
             .anyMatch(a -> a.getAuthority().equals(required));
     }

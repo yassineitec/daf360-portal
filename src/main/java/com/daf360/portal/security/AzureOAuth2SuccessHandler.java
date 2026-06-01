@@ -8,6 +8,7 @@ import com.daf360.portal.service.JwtTokenService;
 import com.daf360.portal.service.UserSyncService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -19,12 +20,17 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class AzureOAuth2SuccessHandler implements AuthenticationSuccessHandler {
+
+    /** Session attribute key set before the OAuth2 redirect to remember which app initiated login. */
+    public static final String ORIGIN_KEY = "oauth2_origin_app";
 
     private final AppProperties props;
     private final UserSyncService userSyncService;
@@ -53,11 +59,9 @@ public class AzureOAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String ms365RefreshToken = client != null && client.getRefreshToken() != null
             ? client.getRefreshToken().getTokenValue() : "";
 
-        // Sync user — stores ms365_access_token and ms365_refresh_token
         User user = userSyncService.syncUser(oidcUser.getIdToken(), ms365AccessToken, ms365RefreshToken);
         List<String> permissions = userSyncService.extractPermissions(user);
 
-        // Issue portal access JWT (RS256)
         String accessJwt = jwtTokenService.generateAccessToken(
             user.getId(),
             user.getAzureOid(),
@@ -67,24 +71,80 @@ public class AzureOAuth2SuccessHandler implements AuthenticationSuccessHandler {
             permissions
         );
 
-        // Generate portal refresh token UUID — stored in `refresh_token` column
         String portalRefreshToken = jwtTokenService.generateRefreshToken();
         user.setRefreshToken(portalRefreshToken);
         userRepository.save(user);
 
-        // Set HttpOnly cookies — no token in URL
         response.addCookie(jwtTokenService.buildAccessCookie(accessJwt));
         response.addCookie(jwtTokenService.buildRefreshCookie(portalRefreshToken));
 
-        // Async audit log — never blocks redirect
         String ip = getClientIp(request);
         auditLogService.log("LOGIN", "PORTAL", String.valueOf(user.getId()), ip,
             user.getAzureOid());
 
         log.info("User {} authenticated via MS365, userId={}", maskEmail(user.getEmail()), user.getId());
 
-        // Redirect Angular — no token in URL (it's in the HttpOnly cookie)
-        response.sendRedirect(props.getCors().getPortalOrigin() + "/home");
+        // Determine which app initiated the OAuth2 flow and redirect back there.
+        String redirectTo = resolveRedirectTarget(request);
+
+        // Drop the OAuth2 session — JWT cookie is the auth mechanism from this point on.
+        request.getSession().invalidate();
+
+        response.sendRedirect(redirectTo);
+    }
+
+    /**
+     * Resolve the post-login redirect target.
+     *
+     * Priority:
+     * 1. Session attribute stored by the /oauth2/init endpoint or filter (most reliable)
+     * 2. Referer header (if it's a known DAF360 app origin)
+     * 3. Default: portal shell /auth/callback
+     */
+    private String resolveRedirectTarget(HttpServletRequest request) {
+        // 1. Session attribute (set when a non-shell app initiates OAuth2)
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            Object stored = session.getAttribute(ORIGIN_KEY);
+            if (stored instanceof String origin && isAllowedOrigin(origin)) {
+                log.debug("Post-login redirect → stored origin: {}", origin);
+                return origin + "/auth/callback";
+            }
+        }
+
+        // 2. Referer header (browser sends this on the /oauth2/authorization/* request)
+        String referer = request.getHeader("Referer");
+        if (referer != null) {
+            String refererOrigin = extractOrigin(referer);
+            if (refererOrigin != null && isAllowedOrigin(refererOrigin)) {
+                log.debug("Post-login redirect → referer origin: {}", refererOrigin);
+                return refererOrigin + "/auth/callback";
+            }
+        }
+
+        // 3. Default: portal shell
+        return props.getCors().getPortalOrigin() + "/auth/callback";
+    }
+
+    private boolean isAllowedOrigin(String origin) {
+        return Set.of(
+            props.getCors().getPortalOrigin(),
+            props.getCors().getHrOrigin(),
+            props.getCors().getFactuOrigin(),
+            props.getCors().getTimesheetOrigin()
+        ).contains(origin);
+    }
+
+    private String extractOrigin(String url) {
+        try {
+            URI uri = URI.create(url);
+            int port = uri.getPort();
+            return port > 0
+                ? uri.getScheme() + "://" + uri.getHost() + ":" + port
+                : uri.getScheme() + "://" + uri.getHost();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String getClientIp(HttpServletRequest request) {
