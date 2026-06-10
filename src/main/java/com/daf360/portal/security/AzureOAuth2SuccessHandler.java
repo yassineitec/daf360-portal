@@ -122,8 +122,8 @@ public class AzureOAuth2SuccessHandler implements AuthenticationSuccessHandler {
             }
         }
 
-        // 3. Default: portal shell
-        return props.getCors().getPortalOrigin() + "/auth/callback";
+        // 3. Default: portal shell frontend URL
+        return props.getFrontendUrl() + "/auth/callback";
     }
 
     private boolean isAllowedOrigin(String origin) {

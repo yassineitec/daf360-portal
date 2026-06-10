@@ -49,6 +49,7 @@ app:
     access-token-expiry-seconds: ${JWT_ACCESS_EXPIRY:3600}
     refresh-token-expiry-seconds: ${JWT_REFRESH_EXPIRY:604800}
     issuer: daf360-portal
+  frontend-url: ${FRONTEND_URL:http://localhost:4200}
   cors:
     portal-origin: ${PORTAL_ORIGIN:http://localhost:4200}
     hr-origin: ${HR_ORIGIN:http://localhost:4201}
