@@ -16,10 +16,22 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
 
-    // Looks up by portal UUID refresh token (the `refresh_token` column, field: refreshToken)
+    // Looks up by portal UUID refresh token (the `refresh_token` column, field:
+    // refreshToken)
     Optional<User> findByRefreshToken(String refreshToken);
 
     Page<User> findByIsActiveTrueOrIsActiveIsNull(Pageable pageable);
+
+    @Query("""
+            SELECT u FROM User u
+            WHERE (u.isActive = true OR u.isActive IS NULL)
+            AND (:search IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')))
+            AND (:departmentId IS NULL OR u.role.id = :departmentId)
+            """)
+    Page<User> search(
+            @Param("search") String search,
+            @Param("departmentId") Long departmentId,
+            Pageable pageable);
 
     @Modifying
     @Query("UPDATE User u SET u.refreshToken = null WHERE u.id = :userId")

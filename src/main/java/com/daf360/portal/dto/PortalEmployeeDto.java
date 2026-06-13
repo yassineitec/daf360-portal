@@ -14,6 +14,8 @@ public class PortalEmployeeDto {
     private String status;
     private String contractType;
     private String hireDate;
-    private Long   departmentId;
+    private Long departmentId;
+    private String department;
     private String photoUrl;
+    private String country;
 }

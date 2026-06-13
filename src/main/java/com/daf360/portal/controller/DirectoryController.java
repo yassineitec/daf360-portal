@@ -1,10 +1,12 @@
 package com.daf360.portal.controller;
 
+import com.daf360.portal.dto.EmployeePageResponse;
 import com.daf360.portal.dto.PortalDepartmentDto;
 import com.daf360.portal.dto.PortalEmployeeDto;
 import com.daf360.portal.entity.EmployeeProfile;
 import com.daf360.portal.entity.User;
 import com.daf360.portal.repository.EmployeeProfileRepository;
+import com.daf360.portal.repository.PaysRepository;
 import com.daf360.portal.repository.RoleRepository;
 import com.daf360.portal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,28 +29,34 @@ public class DirectoryController {
     private final UserRepository          userRepository;
     private final EmployeeProfileRepository profileRepository;
     private final RoleRepository          roleRepository;
+    private final PaysRepository          paysRepository;
 
-    @GetMapping("/employees")
-    @PreAuthorize("isAuthenticated()")
-    public Map<String, Object> listEmployees(
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "18") int size) {
+@GetMapping("/employees")
+public EmployeePageResponse listEmployees(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(required = false) String search,
+        @RequestParam(required = false) Long departmentId
+) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("fullName").ascending());
-        Page<User> usersPage = userRepository.findByIsActiveTrueOrIsActiveIsNull(pageable);
+    Pageable pageable = PageRequest.of(page, size, Sort.by("fullName").ascending());
 
-        List<PortalEmployeeDto> content = usersPage.getContent().stream()
-                .map(u -> toDto(u, profileRepository.findByUserId(u.getId()).orElse(null)))
-                .toList();
+    Page<User> usersPage =
+            userRepository.search(search, departmentId, pageable);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("content",       content);
-        result.put("totalElements", usersPage.getTotalElements());
-        result.put("totalPages",    usersPage.getTotalPages());
-        result.put("number",        usersPage.getNumber());
-        result.put("size",          usersPage.getSize());
-        return result;
-    }
+    List<PortalEmployeeDto> content = usersPage.getContent()
+            .stream()
+            .map(u -> toDto(u, profileRepository.findByUserId(u.getId()).orElse(null)))
+            .toList();
+
+    return new EmployeePageResponse(
+            content,
+            usersPage.getTotalElements(),
+            usersPage.getTotalPages(),
+            usersPage.getNumber(),
+            usersPage.getSize()
+    );
+}
 
     @GetMapping("/departments")
     @PreAuthorize("isAuthenticated()")
@@ -80,6 +88,7 @@ public class DirectoryController {
 
         dto.setEmail(u.getEmail());
         dto.setPosition(u.getRole() != null ? u.getRole().getFrenchName() : null);
+        dto.setDepartment(u.getRole() != null ? u.getRole().getFrenchName() : null);
         dto.setPhone(null);
         dto.setStatus(Boolean.FALSE.equals(u.getIsActive()) ? "INACTIVE" : "ACTIVE");
         dto.setContractType("CDI");
@@ -87,6 +96,9 @@ public class DirectoryController {
                 ? profile.getHireDate().toString() : null);
         dto.setDepartmentId(u.getRole() != null ? u.getRole().getId() : null);
         dto.setPhotoUrl(profile != null ? profile.getPhotoUrl() : null);
+        dto.setCountry(paysRepository.findById(u.getPaysId())
+                .map(p -> p.getFrenchLabel())
+                .orElse(null));
         return dto;
     }
 
