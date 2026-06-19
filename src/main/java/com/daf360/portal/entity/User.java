@@ -60,6 +60,6 @@ public class User {
     private Long paysId;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "roleId")
+    @JoinColumn(name = "role_id")
     private Role role;
 }

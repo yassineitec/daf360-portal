@@ -20,4 +20,7 @@ public class MeResponse {
     private String isoCode;
     private String employeeId;
     private String photoUrl;
+    /** HMAC-signed JWT for authenticating requests to microservices (rh-service, etc.).
+     *  Signed with the shared JWT_SECRET — never transmitted over non-HTTPS in production. */
+    private String rhToken;
 }

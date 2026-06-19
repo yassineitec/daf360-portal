@@ -29,7 +29,7 @@ public class DirectoryController {
     private final RoleRepository          roleRepository;
 
     @GetMapping("/employees")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('GET_USERS')")
     public Map<String, Object> listEmployees(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "18") int size) {
@@ -51,7 +51,7 @@ public class DirectoryController {
     }
 
     @GetMapping("/departments")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('GET_USERS')")
     public List<PortalDepartmentDto> listDepartments() {
         return roleRepository.findAll().stream()
                 .filter(r -> !Boolean.TRUE.equals(r.getDeleted()))
