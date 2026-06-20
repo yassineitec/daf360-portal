@@ -1,0 +1,33 @@
+server:
+  port: 8090
+
+spring:
+  datasource:
+    url: jdbc:sqlserver://${DB_HOST}:${DB_PORT:1433};databaseName=${DB_NAME};encrypt=false;trustServerCertificate=true
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          azure:
+            client-id: ${AZURE_CLIENT_ID}
+            client-secret: ${AZURE_CLIENT_SECRET}
+            scope: [openid, profile, email, offline_access]
+            redirect-uri: "{baseUrl}/login/oauth2/code/azure"
+            authorization-grant-type: authorization_code
+        provider:
+          azure:
+            issuer-uri: "https://login.microsoftonline.com/${AZURE_TENANT_ID}/v2.0"
+
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:4200}
+  cors:
+    portal-origin: ${PORTAL_ORIGIN:http://localhost:4200}
+    hr-origin: ${HR_ORIGIN:http://localhost:4201}
+    facturation-origin: ${FACTURATION_ORIGIN:http://localhost:4202}
+    timesheet-origin: ${TIMESHEET_ORIGIN:http://localhost:4203}
+  cookie:
+    secure: ${COOKIE_SECURE:true}
+    same-site: None

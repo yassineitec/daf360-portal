@@ -60,7 +60,7 @@ services:
     build: .
     container_name: daf360-portal
     ports:
-      - "8080:8080"
+      - "8090:8090"
     env_file:
       - .env
     environment:
@@ -68,6 +68,10 @@ services:
       RABBITMQ_HOST: rabbitmq
       RH_APP_URL: http://rh-service:8081
       BILLING_APP_URL: http://facturation-service:8082
+      JWT_PRIVATE_KEY_PATH: /app/keys/private_pkcs8.pem
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+    volumes:
+      - ./keys:/app/keys:ro
     depends_on:
       rabbitmq:
         condition: service_started

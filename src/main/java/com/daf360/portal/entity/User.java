@@ -52,8 +52,8 @@ public class User {
     @Column(name = "employee_id", length = 30)
     private String employeeId;
 
-    @Column(name = "manager_id")
-    private Long managerId;
+    // @Column(name = "manager_id")
+    // private Long managerId;
 
     // pays_id is NOT NULL in the schema — always set before saving a new user
     @Column(name = "pays_id", nullable = false)
