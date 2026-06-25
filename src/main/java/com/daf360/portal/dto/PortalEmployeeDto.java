@@ -10,6 +10,9 @@ public class PortalEmployeeDto {
     private String lastName;
     private String email;
     private String position;
+    private String grade;
+    private String discipline;
+    private String nogLevel;
     private String phone;
     private String status;
     private String contractType;

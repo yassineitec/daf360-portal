@@ -17,9 +17,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.LinkedHashMap;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/portal")
@@ -58,6 +57,20 @@ public EmployeePageResponse listEmployees(
     );
 }
 
+    @GetMapping("/employees/recent")
+    @PreAuthorize("isAuthenticated()")
+    public List<PortalEmployeeDto> recentEmployees(
+            @RequestParam(defaultValue = "30") int days,
+            @RequestParam(required = false) Long paysId) {
+        LocalDate since = LocalDate.now().minusDays(days);
+        return profileRepository.findRecentHires(since, paysId).stream()
+                .map(profile -> userRepository.findById(profile.getUserId())
+                        .map(user -> toDto(user, profile))
+                        .orElse(null))
+                .filter(dto -> dto != null)
+                .toList();
+    }
+
     @GetMapping("/departments")
     @PreAuthorize("isAuthenticated()")
     public List<PortalDepartmentDto> listDepartments() {
@@ -88,13 +101,24 @@ public EmployeePageResponse listEmployees(
 
         dto.setEmail(u.getEmail());
         dto.setPosition(u.getRole() != null ? u.getRole().getFrenchName() : null);
-        dto.setDepartment(u.getRole() != null ? u.getRole().getFrenchName() : null);
-        dto.setPhone(null);
+        dto.setGrade(profile != null && profile.getGrade() != null
+                ? profile.getGrade().getLabelFr() : null);
+        dto.setDiscipline(profile != null && profile.getDiscipline() != null
+                ? profile.getDiscipline().getLabelFr() : null);
+        dto.setNogLevel(profile != null && profile.getNogLevel() != null
+                ? profile.getNogLevel().getLabelFr() : null);
+        dto.setDepartment(profile != null && profile.getDepartment() != null
+                ? profile.getDepartment().getLabelFr()
+                : (u.getRole() != null ? u.getRole().getFrenchName() : null));
+        dto.setPhone(profile != null ? profile.getPhone() : null);
         dto.setStatus(Boolean.FALSE.equals(u.getIsActive()) ? "INACTIVE" : "ACTIVE");
-        dto.setContractType("CDI");
+        dto.setContractType(profile != null && profile.getContractType() != null
+                ? profile.getContractType() : "CDI");
         dto.setHireDate(profile != null && profile.getHireDate() != null
                 ? profile.getHireDate().toString() : null);
-        dto.setDepartmentId(u.getRole() != null ? u.getRole().getId() : null);
+        dto.setDepartmentId(profile != null && profile.getDepartment() != null
+                ? profile.getDepartment().getId()
+                : (u.getRole() != null ? u.getRole().getId() : null));
         dto.setPhotoUrl(profile != null ? profile.getPhotoUrl() : null);
         dto.setCountry(paysRepository.findById(u.getPaysId())
                 .map(p -> p.getFrenchLabel())
