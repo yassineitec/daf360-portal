@@ -4,6 +4,7 @@ import com.daf360.portal.dto.MeResponse;
 import com.daf360.portal.entity.Pays;
 import com.daf360.portal.entity.Role;
 import com.daf360.portal.entity.User;
+import com.daf360.portal.config.AppProperties;
 import com.daf360.portal.repository.EmployeeProfileRepository;
 import com.daf360.portal.repository.PaysRepository;
 import com.daf360.portal.repository.UserRepository;
@@ -25,15 +26,23 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
-    @Mock UserRepository userRepository;
-    @Mock PaysRepository paysRepository;
-    @Mock EmployeeProfileRepository employeeProfileRepository;
+    @Mock UserRepository             userRepository;
+    @Mock PaysRepository             paysRepository;
+    @Mock EmployeeProfileRepository  employeeProfileRepository;
+    @Mock UserSyncService            userSyncService;
+    @Mock AppProperties              appProperties;
 
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, paysRepository, employeeProfileRepository);
+        // Stub the jwt sub-object so buildRhToken() doesn't NPE
+        AppProperties.Jwt jwt = new AppProperties.Jwt();
+        when(appProperties.getJwt()).thenReturn(jwt);
+        when(appProperties.getJwtSecret()).thenReturn("daf360-change-me-in-production-32chars");
+
+        userService = new UserService(userRepository, paysRepository,
+                employeeProfileRepository, userSyncService, appProperties);
     }
 
     private User buildUser(Long id, Role role) {

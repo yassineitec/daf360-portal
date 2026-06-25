@@ -106,6 +106,12 @@ public class AuthController {
     private void clearAuthCookies(HttpServletResponse response) {
         response.addCookie(jwtTokenService.buildClearAccessCookie());
         response.addCookie(jwtTokenService.buildClearRefreshCookie());
+        // Clear the microservice HMAC cookie added by AzureOAuth2SuccessHandler
+        jakarta.servlet.http.Cookie rhClear = new jakarta.servlet.http.Cookie("daf360_rh", "");
+        rhClear.setHttpOnly(true);
+        rhClear.setPath("/");
+        rhClear.setMaxAge(0);
+        response.addCookie(rhClear);
     }
 
     private Optional<String> extractCookie(HttpServletRequest request, String name) {

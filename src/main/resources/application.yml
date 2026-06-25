@@ -44,6 +44,9 @@ server:
         http-only: true
 
 app:
+  # Shared HMAC secret — must match app.jwt-secret in rh-service exactly.
+  # Hardcoded here to prevent env-var differences between terminal sessions.
+  jwt-secret: daf360-change-me-in-production-32chars
   jwt:
     private-key-path: ${JWT_PRIVATE_KEY_PATH}
     public-key-path: ${JWT_PUBLIC_KEY_PATH}

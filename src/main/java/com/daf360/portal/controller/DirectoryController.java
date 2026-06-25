@@ -72,7 +72,7 @@ public EmployeePageResponse listEmployees(
     }
 
     @GetMapping("/departments")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('GET_USERS')")
     public List<PortalDepartmentDto> listDepartments() {
         return roleRepository.findAll().stream()
                 .filter(r -> !Boolean.TRUE.equals(r.getDeleted()))
