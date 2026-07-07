@@ -10,14 +10,8 @@ import java.time.OffsetDateTime;
 @Table(name = "audit_log")
 public class AuditLog {
 
-    // The audit_log table uses a SQL SEQUENCE named audit_log_SEQ (not IDENTITY)
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "audit_log_gen")
-    @SequenceGenerator(
-        name = "audit_log_gen",
-        sequenceName = "audit_log_SEQ",
-        allocationSize = 50
-    )
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "action", nullable = false, length = 50)

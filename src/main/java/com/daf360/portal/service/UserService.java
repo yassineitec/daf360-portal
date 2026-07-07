@@ -47,9 +47,9 @@ public class UserService {
         // including permissions inherited from subordinate roles in the hierarchy.
         List<String> permissions = userSyncService.extractPermissions(user);
 
-        String photoUrl = employeeProfileRepository.findByUserId(userId)
-            .map(ep -> ep.getPhotoUrl())
-            .orElse(null);
+        var employeeProfile = employeeProfileRepository.findByUserId(userId);
+        String photoUrl  = employeeProfile.map(ep -> ep.getPhotoUrl()).orElse(null);
+        Long   rhProfileId = employeeProfile.map(ep -> ep.getId()).orElse(null);
 
         // HMAC token for rh-service / microservice calls — sent in response body so Angular
         // can use it as Authorization: Bearer without relying on cross-port cookie delivery.
@@ -66,7 +66,7 @@ public class UserService {
             .permissions(permissions)
             .paysId(user.getPaysId())
             .isoCode(isoCode)
-            .employeeId(user.getEmployeeId())
+            .employeeId(rhProfileId != null ? String.valueOf(rhProfileId) : user.getEmployeeId())
             .photoUrl(photoUrl)
             .rhToken(rhToken)
             .build();
