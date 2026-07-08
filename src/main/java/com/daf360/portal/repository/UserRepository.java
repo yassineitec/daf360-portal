@@ -26,7 +26,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
             SELECT u FROM User u
             WHERE (u.isActive = true OR u.isActive IS NULL)
             AND (:search IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')))
-            AND (:departmentId IS NULL OR u.role.id = :departmentId)
+            AND (:departmentId IS NULL OR EXISTS (
+                SELECT 1 FROM EmployeeProfile p
+                WHERE p.userId = u.id AND p.department.id = :departmentId))
             """)
     Page<User> search(
             @Param("search") String search,

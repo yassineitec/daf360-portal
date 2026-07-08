@@ -1,13 +1,11 @@
 package com.daf360.portal.controller;
 
 import com.daf360.portal.dto.EmployeePageResponse;
-import com.daf360.portal.dto.PortalDepartmentDto;
 import com.daf360.portal.dto.PortalEmployeeDto;
 import com.daf360.portal.entity.EmployeeProfile;
 import com.daf360.portal.entity.User;
 import com.daf360.portal.repository.EmployeeProfileRepository;
 import com.daf360.portal.repository.PaysRepository;
-import com.daf360.portal.repository.RoleRepository;
 import com.daf360.portal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,7 +25,6 @@ public class DirectoryController {
 
     private final UserRepository          userRepository;
     private final EmployeeProfileRepository profileRepository;
-    private final RoleRepository          roleRepository;
     private final PaysRepository          paysRepository;
 
 @GetMapping("/employees")
@@ -35,7 +32,8 @@ public EmployeePageResponse listEmployees(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(required = false) String search,
-        @RequestParam(required = false) Long departmentId
+        @RequestParam(required = false) Long departmentId,
+        @RequestParam(defaultValue = "fr") String lang
 ) {
 
     Pageable pageable = PageRequest.of(page, size, Sort.by("fullName").ascending());
@@ -45,7 +43,7 @@ public EmployeePageResponse listEmployees(
 
     List<PortalEmployeeDto> content = usersPage.getContent()
             .stream()
-            .map(u -> toDto(u, profileRepository.findByUserId(u.getId()).orElse(null)))
+            .map(u -> toDto(u, profileRepository.findByUserId(u.getId()).orElse(null), lang))
             .toList();
 
     return new EmployeePageResponse(
@@ -61,36 +59,21 @@ public EmployeePageResponse listEmployees(
     @PreAuthorize("isAuthenticated()")
     public List<PortalEmployeeDto> recentEmployees(
             @RequestParam(defaultValue = "30") int days,
-            @RequestParam(required = false) Long paysId) {
+            @RequestParam(required = false) Long paysId,
+            @RequestParam(defaultValue = "fr") String lang) {
         LocalDate since = LocalDate.now().minusDays(days);
         return profileRepository.findRecentHires(since, paysId).stream()
                 .map(profile -> userRepository.findById(profile.getUserId())
-                        .map(user -> toDto(user, profile))
+                        .map(user -> toDto(user, profile, lang))
                         .orElse(null))
                 .filter(dto -> dto != null)
                 .toList();
     }
 
-    @GetMapping("/departments")
-    @PreAuthorize("hasAuthority('GET_USERS')")
-    public List<PortalDepartmentDto> listDepartments() {
-        return roleRepository.findAll().stream()
-                .filter(r -> !Boolean.TRUE.equals(r.getDeleted()))
-                .map(r -> {
-                    PortalDepartmentDto dto = new PortalDepartmentDto();
-                    dto.setId(r.getId());
-                    dto.setName(r.getFrenchName());
-                    dto.setCode(makeCode(r.getFrenchName()));
-                    dto.setManagerId(null);
-                    dto.setParentId(null);
-                    return dto;
-                })
-                .toList();
-    }
-
     // ── helpers ────────────────────────────────────────────────────────────────
 
-    private PortalEmployeeDto toDto(User u, EmployeeProfile profile) {
+    private PortalEmployeeDto toDto(User u, EmployeeProfile profile, String lang) {
+        boolean en = "en".equalsIgnoreCase(lang);
         PortalEmployeeDto dto = new PortalEmployeeDto();
         dto.setId(u.getId());
         dto.setMatricule(u.getEmployeeId() != null ? u.getEmployeeId() : "USR-" + u.getId());
@@ -102,14 +85,15 @@ public EmployeePageResponse listEmployees(
         dto.setEmail(u.getEmail());
         dto.setPosition(u.getRole() != null ? u.getRole().getFrenchName() : null);
         dto.setGrade(profile != null && profile.getGrade() != null
-                ? profile.getGrade().getLabelFr() : null);
+                ? (en ? profile.getGrade().getLabelEn() : profile.getGrade().getLabelFr()) : null);
         dto.setDiscipline(profile != null && profile.getDiscipline() != null
                 ? profile.getDiscipline().getLabelFr() : null);
         dto.setNogLevel(profile != null && profile.getNogLevel() != null
                 ? profile.getNogLevel().getLabelFr() : null);
         dto.setDepartment(profile != null && profile.getDepartment() != null
-                ? profile.getDepartment().getLabelFr()
-                : (u.getRole() != null ? u.getRole().getFrenchName() : null));
+                ? (en ? profile.getDepartment().getLabelEn() : profile.getDepartment().getLabelFr())
+                : null);
+        dto.setStaffType(staffTypeLabel(profile != null ? profile.getStaffType() : null, en));
         dto.setPhone(profile != null ? profile.getPhone() : null);
         dto.setStatus(Boolean.FALSE.equals(u.getIsActive()) ? "INACTIVE" : "ACTIVE");
         dto.setContractType(profile != null && profile.getContractType() != null
@@ -117,8 +101,7 @@ public EmployeePageResponse listEmployees(
         dto.setHireDate(profile != null && profile.getHireDate() != null
                 ? profile.getHireDate().toString() : null);
         dto.setDepartmentId(profile != null && profile.getDepartment() != null
-                ? profile.getDepartment().getId()
-                : (u.getRole() != null ? u.getRole().getId() : null));
+                ? profile.getDepartment().getId() : null);
         dto.setPhotoUrl(profile != null ? profile.getPhotoUrl() : null);
         dto.setCountry(paysRepository.findById(u.getPaysId())
                 .map(p -> p.getFrenchLabel())
@@ -134,10 +117,13 @@ public EmployeePageResponse listEmployees(
         return new String[]{fullName.substring(0, i), fullName.substring(i + 1)};
     }
 
-    /** Derives a short 3-letter code from a role name (e.g. "Administrateur" → "ADM"). */
-    private String makeCode(String name) {
-        if (name == null || name.isBlank()) return "OTH";
-        String letters = name.replaceAll("[^A-Za-zÀ-ÿ]", "").toUpperCase();
-        return letters.substring(0, Math.min(3, letters.length()));
+    /** Maps the staff_type code (TECHNICAL / OPERATIONS_SUPPORT) to a localized label. */
+    private String staffTypeLabel(String code, boolean en) {
+        if (code == null) return null;
+        return switch (code) {
+            case "TECHNICAL"          -> en ? "Technical" : "Technique";
+            case "OPERATIONS_SUPPORT" -> en ? "Operations Support" : "Support opérations";
+            default -> code;
+        };
     }
 }

@@ -36,8 +36,8 @@ app:
   jwt-secret: "daf360-local-dev-jwt-secret-key-min-32-chars"
   frontend-url: http://localhost:4200
   jwt:
-    private-key-path: ${JWT_PRIVATE_KEY_PATH:/app/keys/private_pkcs8.pem}
-    public-key-path: ${JWT_PUBLIC_KEY_PATH:/app/keys/public.pem}
+    private-key-path: ${JWT_PRIVATE_KEY_PATH:C:/Users/MSI/Desktop/daf360-dev/daf360-portal/keys/private_pkcs8.pem}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:C:/Users/MSI/Desktop/daf360-dev/daf360-portal/keys/public.pem}
   rh-db:
     url: "jdbc:sqlserver://localhost:1433;databaseName=DAF360_HR;encrypt=false;trustServerCertificate=true"
     username: sa

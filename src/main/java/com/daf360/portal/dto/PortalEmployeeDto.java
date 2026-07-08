@@ -15,6 +15,7 @@ public class PortalEmployeeDto {
     private String nogLevel;
     private String phone;
     private String status;
+    private String staffType;
     private String contractType;
     private String hireDate;
     private Long departmentId;
