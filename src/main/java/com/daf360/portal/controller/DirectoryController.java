@@ -123,6 +123,7 @@ public EmployeePageResponse listEmployees(
         dto.setCountry(paysRepository.findById(u.getPaysId())
                 .map(p -> p.getFrenchLabel())
                 .orElse(null));
+        dto.setGender(profile != null ? profile.getGender() : null);
         return dto;
     }
 
