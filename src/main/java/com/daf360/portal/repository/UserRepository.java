@@ -23,12 +23,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findByIsActiveTrueOrIsActiveIsNull(Pageable pageable);
 
     @Query("""
-            SELECT u FROM User u
-            WHERE (u.isActive = true OR u.isActive IS NULL)
-            AND (:search IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')))
-            AND (:departmentId IS NULL OR EXISTS (
-                SELECT 1 FROM EmployeeProfile p
-                WHERE p.userId = u.id AND p.department.id = :departmentId))
+                SELECT u FROM User u
+                WHERE (u.isActive = true OR u.isActive IS NULL)
+                  AND (:search IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')))
+                  AND (:departmentId IS NULL OR EXISTS (
+                        SELECT 1
+                        FROM EmployeeProfile p
+                        WHERE p.userId = u.id
+                          AND p.department.id = :departmentId
+                  ))
+                ORDER BY (
+                    SELECT MAX(p.createdAt)
+                    FROM EmployeeProfile p
+                    WHERE p.userId = u.id
+                ) DESC,
+                u.id DESC
             """)
     Page<User> search(
             @Param("search") String search,

@@ -15,7 +15,7 @@ spring:
           # uncomment the "local-mock" block below.
           azure:
             client-id: PLACEHOLDER_CLIENT_ID
-            client-secret: PLACEHOLDER_CLIENT_SECRET
+            client-secret: ${AZURE_CLIENT_SECRET}
             scope:
               - openid
               - profile

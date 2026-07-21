@@ -15,13 +15,13 @@ spring:
           azure:
             # Dummy values — login page will fail, but app starts
             client-id:     mock-client-id
-            client-secret: mock-client-secret
+            client-secret: ${AZURE_CLIENT_SECRET}
         provider:
           azure:
             issuer-uri: https://login.microsoftonline.com/mock-tenant/v2.0
 
 app:
-  jwt-secret: mock-jwt-secret-32-chars-minimum-00
+  jwt-secret: ${JWT_SECRET}
   frontend-url: http://localhost:4200
   allowed-origins:
     - http://localhost:4200

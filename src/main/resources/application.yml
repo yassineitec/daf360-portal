@@ -46,7 +46,7 @@ server:
 app:
   # Shared HMAC secret — must match app.jwt-secret in rh-service exactly.
   # Hardcoded here to prevent env-var differences between terminal sessions.
-  jwt-secret: daf360-change-me-in-production-32chars
+  jwt-secret: ${JWT_SECRET}
   jwt:
     private-key-path: ${JWT_PRIVATE_KEY_PATH}
     public-key-path: ${JWT_PUBLIC_KEY_PATH}
@@ -67,4 +67,4 @@ app:
   rh-db:
     url: ${RH_DB_URL:jdbc:sqlserver://localhost:1433;databaseName=DAF360-HR;encrypt=false;trustServerCertificate=true}
     username: ${RH_DB_USERNAME:sa}
-    password: ${RH_DB_PASSWORD:}
+    password: ${RH_DB_PASSWORD}

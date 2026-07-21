@@ -22,5 +22,6 @@ public class PortalEmployeeDto {
     private String department;
     private String photoUrl;
     private String country;
+    private String countryIsoCode;
     private String gender;
 }
