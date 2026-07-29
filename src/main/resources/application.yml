@@ -36,6 +36,11 @@ spring:
 server:
   port: ${PORT:8080}
   forward-headers-strategy: NATIVE
+  # Auth cookies carry a permissions claim; a role with the full grant set pushes the
+  # login redirect's Set-Cookie headers past Tomcat's 8KB default → HeadersTooLargeException.
+  max-http-request-header-size: 64KB
+  tomcat:
+    max-http-response-header-size: 64KB
   servlet:
     session:
       cookie:

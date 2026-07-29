@@ -106,11 +106,17 @@ public class AuthController {
     private void clearAuthCookies(HttpServletResponse response) {
         response.addCookie(jwtTokenService.buildClearAccessCookie());
         response.addCookie(jwtTokenService.buildClearRefreshCookie());
-        // Clear the microservice HMAC cookie added by AzureOAuth2SuccessHandler
+        // Clear the legacy microservice HMAC cookie. No longer issued at login, but sessions
+        // that predate that change still hold one — it must be cleared with the SAME secure
+        // and domain attributes it was set with, or the browser keeps the domain-scoped copy.
         jakarta.servlet.http.Cookie rhClear = new jakarta.servlet.http.Cookie("daf360_rh", "");
         rhClear.setHttpOnly(true);
+        rhClear.setSecure(props.getCookie().isSecure());
         rhClear.setPath("/");
         rhClear.setMaxAge(0);
+        if (!props.getCookie().getDomain().isBlank()) {
+            rhClear.setDomain(props.getCookie().getDomain());
+        }
         response.addCookie(rhClear);
     }
 

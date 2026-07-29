@@ -19,15 +19,10 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
-import jakarta.servlet.http.Cookie;
 
 @Slf4j
 @Component
@@ -83,13 +78,11 @@ public class AzureOAuth2SuccessHandler implements AuthenticationSuccessHandler {
         response.addCookie(jwtTokenService.buildAccessCookie(accessJwt));
         response.addCookie(jwtTokenService.buildRefreshCookie(portalRefreshToken));
 
-        // HMAC-signed cookie for microservice auth (rh-service, facturation-service, etc.).
-        // These services cannot use the RSA cookie without the public key — they share the
-        // HMAC secret (JWT_SECRET env var) instead. Same claims, different signing algorithm.
-        response.addCookie(buildHmacServiceCookie(
-            user.getId(), user.getAzureOid(), user.getEmail(),
-            user.getRole() != null ? user.getRole().getId() : null,
-            user.getPaysId(), permissions));
+        // No second HMAC cookie: it duplicated the permissions claim byte-for-byte and pushed
+        // the response headers past Tomcat's limit. Every microservice JwtAuthFilter falls back
+        // to this RSA cookie (they sniff the alg header), and /api/me still returns an HMAC
+        // rhToken in its body for Bearer-style calls. Requires app.jwt-public-key-path on each
+        // service — without it an RS256 token fails validation there.
 
         String ip = getClientIp(request);
         auditLogService.log("LOGIN", "PORTAL", String.valueOf(user.getId()), ip,
@@ -104,42 +97,6 @@ public class AzureOAuth2SuccessHandler implements AuthenticationSuccessHandler {
         request.getSession().invalidate();
 
         response.sendRedirect(redirectTo);
-    }
-
-    /**
-     * Builds an HMAC-HS256 cookie ("daf360_rh") carrying the same claims as the RSA cookie.
-     * Microservices (rh-service, facturation-service) that share JWT_SECRET can validate
-     * this without needing the RSA public key file.
-     */
-    private Cookie buildHmacServiceCookie(Long userId, String azureOid, String email,
-                                           Long roleId, Long paysId, List<String> permissions) {
-        Date now    = new Date();
-        Date expiry = new Date(now.getTime()
-                + props.getJwt().getAccessTokenExpirySeconds() * 1000L);
-
-        String token = Jwts.builder()
-                .subject(String.valueOf(userId))
-                .issuer(props.getJwt().getIssuer())
-                .issuedAt(now)
-                .expiration(expiry)
-                .claim("azureOid",    azureOid)
-                .claim("email",       email)
-                .claim("roleId",      roleId)
-                .claim("paysId",      paysId)
-                .claim("permissions", permissions)
-                .signWith(Keys.hmacShaKeyFor(
-                        props.getJwtSecret().getBytes(StandardCharsets.UTF_8)))
-                .compact();
-
-        Cookie cookie = new Cookie("daf360_rh", token);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(props.getCookie().isSecure());
-        cookie.setPath("/");
-        cookie.setMaxAge((int) props.getJwt().getAccessTokenExpirySeconds());
-        if (!props.getCookie().getDomain().isBlank()) {
-            cookie.setDomain(props.getCookie().getDomain());
-        }
-        return cookie;
     }
 
     /**
