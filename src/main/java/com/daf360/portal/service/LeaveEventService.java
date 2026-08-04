@@ -35,7 +35,14 @@ public class LeaveEventService {
     private static final ZoneId LOCAL_ZONE = ZoneId.of("Europe/Paris");
 
     public List<EventResponse> getLeaveEvents(String email, LocalDate from, LocalDate to) {
-        // dateDebut / dateFin are datetimeoffset stored as UTC midnight of the local date
+        // dateDebut / dateFin are datetimeoffset stored as UTC midnight of the local date.
+        //
+        // The two exact predicates below wrap each column in CAST(... AT TIME ZONE ...),
+        // which is NOT sargable: SQL Server cannot use an index on dateDebut/dateFin and
+        // converts the timezone for every row in [absences] on every calendar paint. The
+        // extra raw-column bounds are the sargable pre-filter — they let the index prune
+        // first, and the exact predicates then decide the day-boundary cases. The ±1 day
+        // margin is what keeps the pre-filter safe for any UTC offset.
         String sql = """
                 SELECT a.id,
                        a.type,
@@ -46,6 +53,8 @@ public class LeaveEventService {
                 FROM [dbo].[absences] a
                 JOIN [dbo].[Users] u ON a.collaborateur_id = u.id
                 WHERE u.email = ?
+                  AND a.dateFin   >= ?
+                  AND a.dateDebut <= ?
                   AND CAST(a.dateFin   AT TIME ZONE 'Romance Standard Time' AS DATE) >= ?
                   AND CAST(a.dateDebut AT TIME ZONE 'Romance Standard Time' AS DATE) <= ?
                   AND a.etatDemande NOT IN ('REFUSE')
@@ -55,7 +64,8 @@ public class LeaveEventService {
         List<EventResponse> events = new ArrayList<>();
 
         try {
-            List<Map<String, Object>> rows = rhJdbc.queryForList(sql, email, from, to);
+            List<Map<String, Object>> rows = rhJdbc.queryForList(
+                sql, email, from.minusDays(1), to.plusDays(1), from, to);
 
             for (Map<String, Object> row : rows) {
                 LocalDate start    = toLocalDate(row.get("dateDebut"));
