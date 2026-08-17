@@ -1,6 +1,7 @@
 package com.daf360.portal.service;
 
 import com.daf360.portal.config.AppProperties;
+import com.daf360.portal.dto.PaysScope;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,8 @@ class JwtTokenServiceTest {
     @Test
     void generateAccessToken_returnsValidJwt() {
         String token = jwtTokenService.generateAccessToken(
-            1L, "oid-123", "user@example.com", 2L, 1L, List.of("RH_READ", "RH_WRITE")
+            1L, "oid-123", "user@example.com", 2L, 1L, List.of("RH_READ", "RH_WRITE"),
+            PaysScope.of(List.of(179L, 53L))
         );
 
         assertThat(token).isNotBlank();
@@ -44,6 +46,36 @@ class JwtTokenServiceTest {
         assertThat(claims.get("roleId", Long.class)).isEqualTo(2L);
         assertThat(claims.get("paysId", Long.class)).isEqualTo(1L);
         assertThat(claims.get("permissions")).isInstanceOf(List.class);
+        // The single-valued paysId claim above must survive alongside the scope: log-service,
+        // payroll and finance still read it and know nothing about paysIds.
+        assertThat(claims.get("paysScopeAll", Boolean.class)).isFalse();
+        // Jackson deserialises the JSON array back as Integers, not Longs
+        assertThat((List<Object>) claims.get("paysIds", List.class))
+                .containsExactlyInAnyOrder(179, 53);
+    }
+
+    @Test
+    void generateAccessToken_showAllRole_emitsUnrestrictedScope() {
+        String token = jwtTokenService.generateAccessToken(
+            1L, "oid", "e@e.com", 1L, 1L, List.of(), PaysScope.unrestricted()
+        );
+
+        Claims claims = jwtTokenService.parseToken(token);
+        assertThat(claims.get("paysScopeAll", Boolean.class)).isTrue();
+        assertThat((List<?>) claims.get("paysIds", List.class)).isEmpty();
+    }
+
+    @Test
+    void generateAccessToken_nullScope_omitsScopeClaimsEntirely() {
+        String token = jwtTokenService.generateAccessToken(
+            1L, "oid", "e@e.com", 1L, 1L, List.of(), null
+        );
+
+        Claims claims = jwtTokenService.parseToken(token);
+        assertThat(claims.get("paysScopeAll")).isNull();
+        assertThat(claims.get("paysIds")).isNull();
+        // Pre-V74 token shape is still produceable — consumers must treat absence as "unknown".
+        assertThat(claims.get("paysId", Long.class)).isEqualTo(1L);
     }
 
     @Test
@@ -55,7 +87,8 @@ class JwtTokenServiceTest {
             shortExpiry, keyPair.getPrivate(), keyPair.getPublic()
         );
 
-        String token = shortService.generateAccessToken(1L, "oid", "e@e.com", 1L, 1L, List.of());
+        String token = shortService.generateAccessToken(
+            1L, "oid", "e@e.com", 1L, 1L, List.of(), PaysScope.unrestricted());
 
         assertThatThrownBy(() -> jwtTokenService.parseToken(token))
             .isInstanceOf(io.jsonwebtoken.ExpiredJwtException.class);
@@ -63,7 +96,8 @@ class JwtTokenServiceTest {
 
     @Test
     void parseToken_tamperedToken_throwsException() {
-        String token = jwtTokenService.generateAccessToken(1L, "oid", "e@e.com", 1L, 1L, List.of());
+        String token = jwtTokenService.generateAccessToken(
+            1L, "oid", "e@e.com", 1L, 1L, List.of(), PaysScope.unrestricted());
         String tampered = token.substring(0, token.lastIndexOf('.') + 1) + "invalidsignature";
 
         assertThatThrownBy(() -> jwtTokenService.parseToken(tampered))

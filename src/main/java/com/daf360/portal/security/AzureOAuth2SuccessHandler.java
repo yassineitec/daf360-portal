@@ -68,7 +68,8 @@ public class AzureOAuth2SuccessHandler implements AuthenticationSuccessHandler {
             user.getEmail(),
             user.getRole() != null ? user.getRole().getId() : null,
             user.getPaysId(),
-            permissions
+            permissions,
+            userSyncService.extractPaysScope(user)
         );
 
         String portalRefreshToken = jwtTokenService.generateRefreshToken();

@@ -1,6 +1,7 @@
 package com.daf360.portal.service;
 
 import com.daf360.portal.dto.MeResponse;
+import com.daf360.portal.dto.PaysScope;
 import com.daf360.portal.entity.Pays;
 import com.daf360.portal.entity.Role;
 import com.daf360.portal.entity.User;
@@ -76,6 +77,8 @@ class UserServiceTest {
         when(userRepository.findById(7L)).thenReturn(Optional.of(buildUser(7L, role)));
         when(paysRepository.findById(1L)).thenReturn(Optional.of(pays));
         when(employeeProfileRepository.findByUserId(7L)).thenReturn(Optional.empty());
+        when(userSyncService.extractPaysScope(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(PaysScope.of(List.of(179L, 53L, 185L)));
 
         MeResponse response = userService.getUserInfo(7L);
 
@@ -89,6 +92,46 @@ class UserServiceTest {
         assertThat(response.getPaysId()).isEqualTo(1L);
         assertThat(response.getIsoCode()).isEqualTo("TN");
         assertThat(response.getEmployeeId()).isEqualTo("EMP001");
+        // The role's country scope, not the user's own pays_id (which is 1L here)
+        assertThat(response.getPaysScopeAll()).isFalse();
+        assertThat(response.getPaysIds()).containsExactlyInAnyOrder(179L, 53L, 185L);
+    }
+
+    @Test
+    void getUserInfo_showAllRole_reportsUnrestrictedScope() {
+        Role role = new Role();
+        role.setId(2L);
+        role.setFrenchName("Administrateur");
+        role.setPermissions(List.of());
+
+        when(userRepository.findById(7L)).thenReturn(Optional.of(buildUser(7L, role)));
+        when(paysRepository.findById(1L)).thenReturn(Optional.empty());
+        when(employeeProfileRepository.findByUserId(7L)).thenReturn(Optional.empty());
+        when(userSyncService.extractPaysScope(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(PaysScope.unrestricted());
+
+        MeResponse response = userService.getUserInfo(7L);
+
+        assertThat(response.getPaysScopeAll()).isTrue();
+        assertThat(response.getPaysIds()).isEmpty();
+    }
+
+    @Test
+    void getUserInfo_nullScope_degradesToOwnCountryNotUnrestricted() {
+        Role role = new Role();
+        role.setId(2L);
+        role.setFrenchName("Collaborateur");
+        role.setPermissions(List.of());
+
+        when(userRepository.findById(7L)).thenReturn(Optional.of(buildUser(7L, role)));
+        when(paysRepository.findById(1L)).thenReturn(Optional.empty());
+        when(employeeProfileRepository.findByUserId(7L)).thenReturn(Optional.empty());
+        // extractPaysScope left unstubbed → returns null
+
+        MeResponse response = userService.getUserInfo(7L);
+
+        assertThat(response.getPaysScopeAll()).isFalse();
+        assertThat(response.getPaysIds()).containsExactly(1L); // the user's own pays_id
     }
 
     @Test

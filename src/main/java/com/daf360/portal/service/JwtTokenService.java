@@ -1,6 +1,7 @@
 package com.daf360.portal.service;
 
 import com.daf360.portal.config.AppProperties;
+import com.daf360.portal.dto.PaysScope;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import jakarta.servlet.http.Cookie;
@@ -27,12 +28,20 @@ public class JwtTokenService {
         this.publicKey = publicKey;
     }
 
+    /**
+     * @param paysScope countries the user's role may see (V74). Emitted as the `paysIds` +
+     *        `paysScopeAll` claims. The single-valued `paysId` claim is kept alongside them
+     *        because log-service, payroll and finance all parse these tokens and still read
+     *        it — dropping it would break three services that know nothing about scope.
+     *        Pass null to omit the scope claims entirely (pre-V74 shape).
+     */
     public String generateAccessToken(Long userId, String azureOid, String email,
-                                      Long roleId, Long paysId, List<String> permissions) {
+                                      Long roleId, Long paysId, List<String> permissions,
+                                      PaysScope paysScope) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + props.getJwt().getAccessTokenExpirySeconds() * 1000L);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
             .subject(String.valueOf(userId))
             .issuer(props.getJwt().getIssuer())
             .issuedAt(now)
@@ -41,9 +50,14 @@ public class JwtTokenService {
             .claim("email", email)
             .claim("roleId", roleId)
             .claim("paysId", paysId)
-            .claim("permissions", permissions)
-            .signWith(privateKey, Jwts.SIG.RS256)
-            .compact();
+            .claim("permissions", permissions);
+
+        if (paysScope != null) {
+            builder.claim("paysScopeAll", paysScope.all())
+                   .claim("paysIds", paysScope.paysIds());
+        }
+
+        return builder.signWith(privateKey, Jwts.SIG.RS256).compact();
     }
 
     public String generateRefreshToken() {

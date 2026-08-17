@@ -57,7 +57,8 @@ public class MockLoginController {
             user.getEmail(),
             user.getRole() != null ? user.getRole().getId() : null,
             user.getPaysId(),
-            permissions
+            permissions,
+            userSyncService.extractPaysScope(user)
         );
 
         response.addCookie(jwtTokenService.buildAccessCookie(accessJwt));

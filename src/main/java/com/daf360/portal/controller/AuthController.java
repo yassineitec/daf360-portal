@@ -67,7 +67,8 @@ public class AuthController {
         String newAccessJwt = jwtTokenService.generateAccessToken(
             user.getId(), user.getAzureOid(), user.getEmail(),
             user.getRole() != null ? user.getRole().getId() : null,
-            user.getPaysId(), permissions
+            user.getPaysId(), permissions,
+            userSyncService.extractPaysScope(user)
         );
 
         // Rotate refresh token
