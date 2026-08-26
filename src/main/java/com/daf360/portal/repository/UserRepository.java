@@ -22,6 +22,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Page<User> findByIsActiveTrueOrIsActiveIsNull(Pageable pageable);
 
+    /**
+     * Directory listing, newest hire first. The date lives on EmployeeProfile, so it
+     * is read through a correlated subquery (MAX, because a user can carry more than
+     * one profile row). Users with no profile — or a profile with no hire_date — have
+     * nothing to date; the leading CASE sinks them to the bottom instead of letting
+     * SQL Server sort NULL first and park them at the top of page 1. `u.id DESC` is
+     * the tiebreaker that keeps OFFSET paging deterministic for a shared hire date.
+     */
     @Query("""
                 SELECT u FROM User u
                 WHERE (u.isActive = true OR u.isActive IS NULL)
@@ -32,8 +40,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         WHERE p.userId = u.id
                           AND p.department.id = :departmentId
                   ))
-                ORDER BY (
-                    SELECT MAX(p.createdAt)
+                ORDER BY
+                CASE WHEN (
+                    SELECT MAX(p.hireDate)
+                    FROM EmployeeProfile p
+                    WHERE p.userId = u.id
+                ) IS NULL THEN 1 ELSE 0 END,
+                (
+                    SELECT MAX(p.hireDate)
                     FROM EmployeeProfile p
                     WHERE p.userId = u.id
                 ) DESC,

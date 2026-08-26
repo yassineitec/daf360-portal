@@ -6,7 +6,7 @@ import lombok.Getter;
 @Getter
 @Entity
 @Table(name = "departments")
-public class Department {
+public class Department implements Localized {
 
     @Id
     private Long id;

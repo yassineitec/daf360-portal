@@ -6,7 +6,7 @@ import lombok.Getter;
 @Getter
 @Entity
 @Table(name = "nog_levels")
-public class NogLevel {
+public class NogLevel implements Localized {
 
     @Id
     private Long id;
