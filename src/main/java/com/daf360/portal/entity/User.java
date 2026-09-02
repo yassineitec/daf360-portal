@@ -48,6 +48,16 @@ public class User {
     @Column(name = "token_expires_at")
     private LocalDateTime tokenExpiresAt;
 
+    /**
+     * Last successful sign-in. The portal is the only writer — no other service sees a login.
+     *
+     * Deliberately NOT derived from `tokenExpiresAt`: that column is never written at login,
+     * so anything computed from it would be fabricated. NULL means "never signed in", which
+     * is the true state of an account created but never used.
+     */
+    @Column(name = "last_login_at")
+    private java.time.OffsetDateTime lastLoginAt;
+
     // employee_id is VARCHAR(30) in the schema, not a Long
     @Column(name = "employee_id", length = 30)
     private String employeeId;

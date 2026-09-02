@@ -74,6 +74,9 @@ public class AzureOAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         String portalRefreshToken = jwtTokenService.generateRefreshToken();
         user.setRefreshToken(portalRefreshToken);
+        // The only place a sign-in is observable. Written here rather than derived from
+        // token_expires_at, which no login path ever sets.
+        user.setLastLoginAt(java.time.OffsetDateTime.now());
         userRepository.save(user);
 
         response.addCookie(jwtTokenService.buildAccessCookie(accessJwt));
