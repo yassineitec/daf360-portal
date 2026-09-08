@@ -9,6 +9,7 @@ import com.daf360.portal.entity.User;
 import com.daf360.portal.repository.EmployeeProfileRepository;
 import com.daf360.portal.repository.PaysRepository;
 import com.daf360.portal.repository.UserRepository;
+import com.daf360.portal.security.PaysScopeContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,7 +42,13 @@ public class DirectoryController {
                 // could only ever act as a tiebreaker behind the unique u.id.
                 Pageable pageable = PageRequest.of(page, size);
 
-                Page<User> usersPage = userRepository.search(search, departmentId, pageable);
+                // La portée pays vient du JETON, pas d'un paramètre : l'annuaire ne doit pas
+                // pouvoir être élargi depuis l'URL. Voir PaysScopeContext.
+                PaysScopeContext.Scope scope = PaysScopeContext.current();
+
+                Page<User> usersPage = userRepository.search(
+                                search, departmentId,
+                                scope.unfiltered(), scope.idsOrPlaceholder(), pageable);
 
                 List<PortalEmployeeDto> content = usersPage.getContent()
                                 .stream()
@@ -113,7 +120,22 @@ public class DirectoryController {
                 dto.setDepartment(label(profile.getDepartment(), en));
                 dto.setStaffType(staffTypeLabel(profile.getStaffType(), en));
                 dto.setPhone(profile.getPhone());
-                dto.setStatus(Boolean.FALSE.equals(u.getIsActive()) ? "INACTIVE" : "ACTIVE");
+                /*
+                 * Le statut affiché est celui du PROFIL, plus celui du compte.
+                 *
+                 * Il valait `isActive ? ACTIVE : INACTIVE` — et comme la requête écarte déjà
+                 * les comptes désactivés, il répondait « ACTIVE » à chaque ligne, quoi qu'il
+                 * arrive. Pire : il pouvait dire ACTIVE d'un employé que la fiche RH montrait
+                 * en OFFBOARDING, parce que les deux écrans mesuraient deux choses
+                 * différentes sous le même mot.
+                 *
+                 * Sans profil, le statut reste ACTIVE : le compte est actif, la personne est
+                 * bien là, et son dossier RH n'est simplement pas rempli — c'est le cas de la
+                 * majorité des comptes sur cette base (voir UserRepository).
+                 */
+                dto.setStatus(profile.getLifecycleStatus() != null
+                                ? profile.getLifecycleStatus()
+                                : "ACTIVE");
                 dto.setContractType(profile.getContractType() != null ? profile.getContractType() : "CDI");
                 dto.setHireDate(profile.getHireDate() != null ? profile.getHireDate().toString() : null);
                 dto.setDepartmentId(profile.getDepartment() != null ? profile.getDepartment().getId() : null);

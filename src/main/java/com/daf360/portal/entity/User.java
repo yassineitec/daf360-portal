@@ -69,6 +69,18 @@ public class User {
     @Column(name = "pays_id", nullable = false)
     private Long paysId;
 
+    /**
+     * Est-ce une PERSONNE (V96) ? Faux pour les comptes de test, les imports dupliqués et
+     * les comptes machine.
+     *
+     * <p>Vaut 1 par défaut en base, donc l'ajout de la colonne n'a rien changé jusqu'à ce
+     * que des lignes soient reclassées depuis Administration → Utilisateurs. C'est ce qui
+     * distingue l'annuaire d'une liste de comptes : « TimeSheet TUN », « test test » et une
+     * vingtaine d'utilisateurs de démonstration y figuraient au milieu du personnel.
+     */
+    @Column(name = "is_employee")
+    private Boolean isEmployee;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id")
     private Role role;

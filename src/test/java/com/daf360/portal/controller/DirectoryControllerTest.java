@@ -24,6 +24,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -59,7 +60,11 @@ class DirectoryControllerTest {
 
     private void givenUsers(User... users) {
         Page<User> page = new PageImpl<>(List.of(users));
-        when(userRepository.search(any(), any(), any(Pageable.class))).thenReturn(page);
+        // `search` prend désormais la portée pays (scopeAll + paysIds) : deux arguments de
+        // plus, dont un booléen primitif — d'où anyBoolean() et non any(), qui ne peut pas
+        // s'unifier avec `boolean`.
+        when(userRepository.search(any(), any(), anyBoolean(), any(), any(Pageable.class)))
+                .thenReturn(page);
     }
 
     private void givenPays(long id, String label, String iso) {

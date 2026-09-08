@@ -58,13 +58,54 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(claims.getSubject(), null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(auth);
+
+                /*
+                 * La portée pays, pour les écrans DU PORTAIL (l'annuaire).
+                 *
+                 * C'est ce service qui écrit `paysScopeAll` / `paysIds` dans le jeton, et il
+                 * se trouvait ne pas les relire : l'annuaire listait le personnel de toutes
+                 * les entités à tout le monde, sans aucune clause de pays.
+                 *
+                 * Repli sur `paysId` seul quand les revendications de portée sont absentes
+                 * (jeton antérieur à V74), jamais sur « tous les pays ».
+                 */
+                PaysScopeContext.set(resolveScope(claims, authorities));
             } catch (Exception e) {
                 log.debug("JWT rejected for {}: {}", request.getRequestURI(), e.getMessage());
                 SecurityContextHolder.clearContext();
             }
         });
 
-        chain.doFilter(request, response);
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            // Le thread sert la requête suivante : une portée oubliée serait celle de
+            // l'utilisateur précédent.
+            PaysScopeContext.clear();
+        }
+    }
+
+    private PaysScopeContext.Scope resolveScope(Claims claims,
+                                                List<SimpleGrantedAuthority> authorities) {
+        boolean global = authorities.stream()
+                .anyMatch(a -> PaysScopeContext.isGlobalPermission(a.getAuthority()));
+        Boolean scopeAll = claims.get("paysScopeAll", Boolean.class);
+        if (global || Boolean.TRUE.equals(scopeAll)) {
+            return new PaysScopeContext.Scope(true, java.util.Set.of());
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Number> ids = claims.get("paysIds", List.class);
+        java.util.Set<Long> allowed = new java.util.LinkedHashSet<>();
+        if (ids != null) {
+            ids.stream().filter(java.util.Objects::nonNull)
+               .forEach(n -> allowed.add(n.longValue()));
+        }
+        if (allowed.isEmpty()) {
+            Number own = claims.get("paysId", Number.class);
+            if (own != null) allowed.add(own.longValue());
+        }
+        return new PaysScopeContext.Scope(false, allowed);
     }
 
     private Optional<String> extractToken(HttpServletRequest request) {
