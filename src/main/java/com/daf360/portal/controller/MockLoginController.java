@@ -57,7 +57,6 @@ public class MockLoginController {
             user.getEmail(),
             user.getRole() != null ? user.getRole().getId() : null,
             user.getPaysId(),
-            permissions,
             userSyncService.extractPaysScope(user)
         );
 

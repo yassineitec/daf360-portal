@@ -1,6 +1,7 @@
 package com.daf360.portal.security;
 
 import com.daf360.portal.service.JwtTokenService;
+import com.daf360.portal.service.UserService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,6 +28,7 @@ import java.util.Optional;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenService jwtTokenService;
+    private final UserService userService;
 
     /**
      * Skip JWT processing for OAuth2 paths.
@@ -128,14 +130,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         return Optional.empty();
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * The token's `permissions` claim when it has one (a Bearer rhToken, or a cookie minted
+     * before the claim was dropped), otherwise the user's permissions from the database.
+     *
+     * The `daf360_access` cookie no longer carries them (see
+     * JwtTokenService.generateAccessToken) and this filter reads that cookie FIRST, so the
+     * lookup is the normal path for browser calls. It goes through UserService.getUserInfo —
+     * the same cached object /api/me serves (5 min, evicted at login and refresh) — so it is
+     * the exact list the frontends already gate on, and costs no query on a cache hit.
+     */
     private List<SimpleGrantedAuthority> extractAuthorities(Claims claims) {
         Object perms = claims.get("permissions");
-        if (perms instanceof List<?> list) {
-            return list.stream()
-                .map(p -> new SimpleGrantedAuthority(p.toString()))
-                .toList();
-        }
-        return List.of();
+        List<?> codes = perms instanceof List<?> list
+            ? list
+            : userService.getUserInfo(Long.parseLong(claims.getSubject())).getPermissions();
+        if (codes == null) return List.of();
+        return codes.stream()
+            .map(p -> new SimpleGrantedAuthority(p.toString()))
+            .toList();
     }
 }

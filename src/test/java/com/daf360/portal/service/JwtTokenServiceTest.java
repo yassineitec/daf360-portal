@@ -34,7 +34,7 @@ class JwtTokenServiceTest {
     @Test
     void generateAccessToken_returnsValidJwt() {
         String token = jwtTokenService.generateAccessToken(
-            1L, "oid-123", "user@example.com", 2L, 1L, List.of("RH_READ", "RH_WRITE"),
+            1L, "oid-123", "user@example.com", 2L, 1L,
             PaysScope.of(List.of(179L, 53L))
         );
 
@@ -45,7 +45,9 @@ class JwtTokenServiceTest {
         assertThat(claims.get("email", String.class)).isEqualTo("user@example.com");
         assertThat(claims.get("roleId", Long.class)).isEqualTo(2L);
         assertThat(claims.get("paysId", Long.class)).isEqualTo(1L);
-        assertThat(claims.get("permissions")).isInstanceOf(List.class);
+        // Never in the cookie token: it pushed the cookie past the browser's 4096 B cap for
+        // the largest roles. Permissions travel in /api/me's rhToken (Bearer header) only.
+        assertThat(claims.get("permissions")).isNull();
         // The single-valued paysId claim above must survive alongside the scope: log-service,
         // payroll and finance still read it and know nothing about paysIds.
         assertThat(claims.get("paysScopeAll", Boolean.class)).isFalse();
@@ -57,7 +59,7 @@ class JwtTokenServiceTest {
     @Test
     void generateAccessToken_showAllRole_emitsUnrestrictedScope() {
         String token = jwtTokenService.generateAccessToken(
-            1L, "oid", "e@e.com", 1L, 1L, List.of(), PaysScope.unrestricted()
+            1L, "oid", "e@e.com", 1L, 1L, PaysScope.unrestricted()
         );
 
         Claims claims = jwtTokenService.parseToken(token);
@@ -68,7 +70,7 @@ class JwtTokenServiceTest {
     @Test
     void generateAccessToken_nullScope_omitsScopeClaimsEntirely() {
         String token = jwtTokenService.generateAccessToken(
-            1L, "oid", "e@e.com", 1L, 1L, List.of(), null
+            1L, "oid", "e@e.com", 1L, 1L, null
         );
 
         Claims claims = jwtTokenService.parseToken(token);
@@ -88,7 +90,7 @@ class JwtTokenServiceTest {
         );
 
         String token = shortService.generateAccessToken(
-            1L, "oid", "e@e.com", 1L, 1L, List.of(), PaysScope.unrestricted());
+            1L, "oid", "e@e.com", 1L, 1L, PaysScope.unrestricted());
 
         assertThatThrownBy(() -> jwtTokenService.parseToken(token))
             .isInstanceOf(io.jsonwebtoken.ExpiredJwtException.class);
@@ -97,7 +99,7 @@ class JwtTokenServiceTest {
     @Test
     void parseToken_tamperedToken_throwsException() {
         String token = jwtTokenService.generateAccessToken(
-            1L, "oid", "e@e.com", 1L, 1L, List.of(), PaysScope.unrestricted());
+            1L, "oid", "e@e.com", 1L, 1L, PaysScope.unrestricted());
         String tampered = token.substring(0, token.lastIndexOf('.') + 1) + "invalidsignature";
 
         assertThatThrownBy(() -> jwtTokenService.parseToken(tampered))

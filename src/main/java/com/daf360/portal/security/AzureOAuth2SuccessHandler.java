@@ -21,7 +21,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -60,15 +59,13 @@ public class AzureOAuth2SuccessHandler implements AuthenticationSuccessHandler {
             ? client.getRefreshToken().getTokenValue() : "";
 
         User user = userSyncService.syncUser(oidcUser.getIdToken(), ms365AccessToken, ms365RefreshToken);
-        List<String> permissions = userSyncService.extractPermissions(user);
-
+        // No permissions in this token — see JwtTokenService.generateAccessToken.
         String accessJwt = jwtTokenService.generateAccessToken(
             user.getId(),
             user.getAzureOid(),
             user.getEmail(),
             user.getRole() != null ? user.getRole().getId() : null,
             user.getPaysId(),
-            permissions,
             userSyncService.extractPaysScope(user)
         );
 

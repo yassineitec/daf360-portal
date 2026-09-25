@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -34,10 +33,19 @@ public class JwtTokenService {
      *        because log-service, payroll and finance all parse these tokens and still read
      *        it — dropping it would break three services that know nothing about scope.
      *        Pass null to omit the scope claims entirely (pre-V74 shape).
+     *
+     * NO `permissions` claim — deliberately. This token travels as the `daf360_access`
+     * cookie, and browsers silently DROP any single cookie over 4096 bytes: with the full
+     * permission list inside, the largest roles (Administrateur, Super Admin) could no
+     * longer log in at all, and every new permission code made it worse. Permissions now
+     * travel only in the `rhToken` that /api/me returns in its body, which every frontend
+     * sends as `Authorization: Bearer` (a header, where nginx allows 32k). Every backend
+     * already tries the Bearer token before this cookie; the portal itself resolves them
+     * from the database (JwtAuthFilter → UserService.getUserInfo). The cookie now only
+     * proves WHO the user is — ~700 bytes, whatever the role.
      */
     public String generateAccessToken(Long userId, String azureOid, String email,
-                                      Long roleId, Long paysId, List<String> permissions,
-                                      PaysScope paysScope) {
+                                      Long roleId, Long paysId, PaysScope paysScope) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + props.getJwt().getAccessTokenExpirySeconds() * 1000L);
 
@@ -49,8 +57,7 @@ public class JwtTokenService {
             .claim("azureOid", azureOid)
             .claim("email", email)
             .claim("roleId", roleId)
-            .claim("paysId", paysId)
-            .claim("permissions", permissions);
+            .claim("paysId", paysId);
 
         if (paysScope != null) {
             builder.claim("paysScopeAll", paysScope.all())
@@ -106,12 +113,21 @@ public class JwtTokenService {
         return cookie;
     }
 
+    /**
+     * Same Domain as buildAccessCookie, or the browser never deletes the real cookie: a
+     * cookie is identified by name + domain + path, so a Max-Age=0 without the Domain
+     * targets a host-only twin that doesn't exist, and the session set WITH COOKIE_DOMAIN
+     * survives logout — the user is "connected again" on the next reload.
+     */
     public Cookie buildClearAccessCookie() {
         Cookie cookie = new Cookie("daf360_access", "");
         cookie.setHttpOnly(true);
         cookie.setSecure(props.getCookie().isSecure());
         cookie.setPath("/");
         cookie.setMaxAge(0);
+        if (!props.getCookie().getDomain().isBlank()) {
+            cookie.setDomain(props.getCookie().getDomain());
+        }
         return cookie;
     }
 
@@ -121,6 +137,10 @@ public class JwtTokenService {
         cookie.setSecure(props.getCookie().isSecure());
         cookie.setPath("/auth/refresh");
         cookie.setMaxAge(0);
+        // Same reason as buildClearAccessCookie.
+        if (!props.getCookie().getDomain().isBlank()) {
+            cookie.setDomain(props.getCookie().getDomain());
+        }
         return cookie;
     }
 }

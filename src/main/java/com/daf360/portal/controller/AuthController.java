@@ -12,12 +12,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -32,6 +33,7 @@ public class AuthController {
     private final UserRepository userRepository;
     private final UserSyncService userSyncService;
     private final AuditLogService auditLogService;
+    private final CacheManager cacheManager;
 
     /** Redirect browser to Azure AD login */
     @GetMapping("/login")
@@ -63,13 +65,21 @@ public class AuthController {
             return ResponseEntity.status(401).body(Map.of("error", "Invalid refresh token"));
         }
 
-        List<String> permissions = userSyncService.extractPermissions(user);
         String newAccessJwt = jwtTokenService.generateAccessToken(
             user.getId(), user.getAzureOid(), user.getEmail(),
             user.getRole() != null ? user.getRole().getId() : null,
-            user.getPaysId(), permissions,
+            user.getPaysId(),
             userSyncService.extractPaysScope(user)
         );
+
+        // The shell re-fetches /api/me right after this call to pick up a fresh rhToken —
+        // the Bearer that now carries the permissions. /api/me is cached for 5 minutes, so
+        // without this eviction it could hand back an rhToken minted up to 5 minutes BEFORE
+        // this new cookie: that Bearer expires first, every backend then falls back to the
+        // cookie, which has no permissions, and the user sees 403s until the next refresh.
+        // Evicting also makes a role change visible at refresh, not only at the next login.
+        Cache userInfo = cacheManager.getCache("userInfo");
+        if (userInfo != null) userInfo.evict(user.getId());
 
         // Rotate refresh token
         String newRefresh = jwtTokenService.generateRefreshToken();
