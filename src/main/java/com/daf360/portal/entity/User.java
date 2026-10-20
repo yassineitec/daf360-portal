@@ -26,7 +26,13 @@ public class User {
     @Column(name = "password", length = 255)
     private String password;
 
-    @Column(name = "isActive")
+    /*
+     * isActive, employee_id, pays_id, is_employee are rh-service's columns
+     * (TIMESHEET-INTEGRATION-DECISIONS.md, C0.2). This entity is saved whole on every login
+     * (UserSyncService, AuthController, AzureOAuth2SuccessHandler), which wrote back the values
+     * it had loaded — undoing any change rh-service made in between. Read-only here.
+     */
+    @Column(name = "isActive", updatable = false)
     private Boolean isActive = true;
 
     @Column(name = "azure_oid", length = 100)
@@ -59,14 +65,14 @@ public class User {
     private java.time.OffsetDateTime lastLoginAt;
 
     // employee_id is VARCHAR(30) in the schema, not a Long
-    @Column(name = "employee_id", length = 30)
+    @Column(name = "employee_id", length = 30, updatable = false)
     private String employeeId;
 
     // @Column(name = "manager_id")
     // private Long managerId;
 
     // pays_id is NOT NULL in the schema — always set before saving a new user
-    @Column(name = "pays_id", nullable = false)
+    @Column(name = "pays_id", nullable = false, updatable = false)
     private Long paysId;
 
     /**
@@ -78,7 +84,7 @@ public class User {
      * distingue l'annuaire d'une liste de comptes : « TimeSheet TUN », « test test » et une
      * vingtaine d'utilisateurs de démonstration y figuraient au milieu du personnel.
      */
-    @Column(name = "is_employee")
+    @Column(name = "is_employee", updatable = false)
     private Boolean isEmployee;
 
     @ManyToOne(fetch = FetchType.EAGER)
