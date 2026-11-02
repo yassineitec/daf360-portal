@@ -35,37 +35,30 @@ public class LeaveEventService {
     private static final ZoneId LOCAL_ZONE = ZoneId.of("Europe/Paris");
 
     public List<EventResponse> getLeaveEvents(String email, LocalDate from, LocalDate to) {
-        // dateDebut / dateFin are datetimeoffset stored as UTC midnight of the local date.
-        //
-        // The two exact predicates below wrap each column in CAST(... AT TIME ZONE ...),
-        // which is NOT sargable: SQL Server cannot use an index on dateDebut/dateFin and
-        // converts the timezone for every row in [absences] on every calendar paint. The
-        // extra raw-column bounds are the sargable pre-filter — they let the index prune
-        // first, and the exact predicates then decide the day-boundary cases. The ±1 day
-        // margin is what keeps the pre-filter safe for any UTC offset.
+        // RH's absences table (rh-service LeaveRequest), not the old timesheet one: snake_case
+        // columns, and date_debut / date_fin are plain DATEs holding the local day, so no
+        // time-zone conversion and the predicates stay sargable as written.
+        // REFUSE and ARCHIVE (cancelled) never reach the calendar.
         String sql = """
                 SELECT a.id,
                        a.type,
-                       CAST(a.dateDebut AT TIME ZONE 'Romance Standard Time' AS DATE) AS dateDebut,
-                       CAST(a.dateFin   AT TIME ZONE 'Romance Standard Time' AS DATE) AS dateFin,
-                       a.etatDemande,
+                       a.date_debut   AS dateDebut,
+                       a.date_fin     AS dateFin,
+                       a.etat_demande AS etatDemande,
                        a.reason
                 FROM [dbo].[absences] a
                 JOIN [dbo].[Users] u ON a.collaborateur_id = u.id
                 WHERE u.email = ?
-                  AND a.dateFin   >= ?
-                  AND a.dateDebut <= ?
-                  AND CAST(a.dateFin   AT TIME ZONE 'Romance Standard Time' AS DATE) >= ?
-                  AND CAST(a.dateDebut AT TIME ZONE 'Romance Standard Time' AS DATE) <= ?
-                  AND a.etatDemande NOT IN ('REFUSE')
-                ORDER BY a.dateDebut
+                  AND a.date_fin   >= ?
+                  AND a.date_debut <= ?
+                  AND a.etat_demande NOT IN ('REFUSE', 'ARCHIVE')
+                ORDER BY a.date_debut
                 """;
 
         List<EventResponse> events = new ArrayList<>();
 
         try {
-            List<Map<String, Object>> rows = rhJdbc.queryForList(
-                sql, email, from.minusDays(1), to.plusDays(1), from, to);
+            List<Map<String, Object>> rows = rhJdbc.queryForList(sql, email, from, to);
 
             for (Map<String, Object> row : rows) {
                 LocalDate start    = toLocalDate(row.get("dateDebut"));
