@@ -29,6 +29,13 @@ public class GlobalExceptionHandler {
             .body(Map.of("error", "UNAUTHORIZED"));
     }
 
+    /** A rejected input (e.g. a help question without its French text) — 400, not 500. */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(Map.of("error", "BAD_REQUEST", "detail", String.valueOf(ex.getMessage())));
+    }
+
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(EntityNotFoundException ex) {
         String resource = ex.getMessage() != null ? ex.getMessage() : "unknown";
